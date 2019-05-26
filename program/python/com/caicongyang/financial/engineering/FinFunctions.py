@@ -20,8 +20,7 @@ def import_stock_data(stock_code):
     :return:
     """
     df = pd.read_csv(config.input_data_path + '/stock_data/' + stock_code + '_utf-8.csv', encoding='utf-8')
-    # df.columns = [i.encode('utf8') for i in df.columns]
-    print(df.columns)
+    # df.columns = [i.encode('utf8') for i in df.columns] 导入的是gbk 时需要做一次转成
     df = df[['交易日期', '股票代码', '开盘价', '最高价', '最低价', '收盘价', '涨跌幅']]
     df.sort_values(by=['交易日期'], inplace=True)
     df['交易日期'] = pd.to_datetime(df['交易日期'])
