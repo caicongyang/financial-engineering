@@ -4,8 +4,8 @@
 
 import pandas as pd
 from program.python.com.caicongyang.financial.engineering.timing_strategy import Signals  # 同一级目录直接import
+from program.python.com.caicongyang.financial.engineering.utils import FinFunctions
 from program.python.com.caicongyang.financial.engineering.timing_strategy import Timing_Functions
-from program.python.com.caicongyang.financial.engineering import FinFunctions
 
 # 或者import program.Function
 
@@ -49,5 +49,4 @@ df = Timing_Functions.equity_curve(df, initial_money=1000000, slippage=0.01, c_r
 
 df['手续费'].fillna(value=0, inplace=True)
 df['印花税'].fillna(value=0, inplace=True)
-
 print(df)
