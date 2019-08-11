@@ -29,7 +29,7 @@ def get_pre_5days(num):
 
 
 def get_pre_tran_day():
-    week = datetime.datetime.strptime('2019-08-11', '%Y-%m-%d').strftime("%w")
+    week = datetime.datetime.strptime(get_current_day(), '%Y-%m-%d').strftime("%w")
     # 周天
     if int(week) == 0:
         return get_pre_5days(6)
@@ -39,6 +39,22 @@ def get_pre_tran_day():
     # 周一
     else:
         return get_pre_5days(6)
+
+
+def get_last_tran_day():
+    """
+    获取最近的一个交易日
+    :return:
+    """
+    week = datetime.datetime.strptime(get_current_day(), '%Y-%m-%d').strftime("%w")
+    # 周天
+    if int(week) == 0:
+        return get_pre_5days(2)
+    # 周六
+    elif int(week) == 6:
+        return get_pre_5days(1)
+    else:
+        return get_current_day()
 
 
 def get_pre_5day():

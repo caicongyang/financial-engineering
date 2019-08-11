@@ -3,7 +3,7 @@
 
 
 """
-选股策略：
+选股策略：(查看所有崛起的股票)
 试用期：牛市追涨策略
 当日成交量 > 前5个交易日成交量均值
 当前成交量 > 前一个交易日的成交量
@@ -11,6 +11,7 @@
 import pandas as pd
 from jqdatasdk import *
 from program.python.com.caicongyang.financial.engineering.utils import DateTimeUtil
+from program.python.com.caicongyang.financial.engineering.stock_select_strategy import JoinQuantUtil
 
 auth('13774598865', '123456')
 
@@ -67,12 +68,32 @@ df_mean['lastDayCompare'] = df_mean[columns_list[4]] / df_mean[columns_list[3]]
 df_mean = df_mean[df_mean['lastDayCompare'] < 70]
 #
 df_mean = df_mean[df_mean['lastDayCompare'] > 2]
+
 #
 df_mean = df_mean.sort_values(by="mean", ascending=False)
 
-# pandas显示所有行
-pd.set_option('display.max_rows', None)
 print(df_mean)
+
+# 取出所有的不满足条件的股票
+df_mean_index_list = list(df_mean.index)
+set = []
+for x in df_mean_index_list:
+    if not JoinQuantUtil.verify_stock(x):
+        set.append(x)
+
+df_mean_final = df_mean.drop(set, axis=0)  # 利用drop方法将含有特定数值的列删除
+
+# 删除这些不满足条件的股票
+
+print("-------------final ------------")
+print(df_mean_final)
+print(df_mean_final.shape)
+
+# df_mean['increase_ratio'] = df_mean.apply(lambda x: JoinQuantUtil.verify_stock(x) == True)
+
+# # pandas显示所有行
+# pd.set_option('display.max_rows', None)
+# print(df_mean)
 
 #
 # """
@@ -98,5 +119,6 @@ print(df_mean)
 #     d = get_industry(stock_code, date=current_date)
 #     try:
 #         print(stock_code + ':' + d[stock_code]['sw_l2']['industry_name'])
+
 #     except:
 #         print(stock_code + ':' + '异常')
