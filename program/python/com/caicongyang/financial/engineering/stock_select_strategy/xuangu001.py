@@ -20,13 +20,15 @@ pd.set_option('expand_frame_repr', False)
 
 # 获取所有的股票
 stocks_list = list(get_all_securities(['stock']).index)
+# ['603797.XSHG','000002.XSHG']
+
 
 # 当前的时间
 current_date = DateTimeUtil.get_current_day()
-
+# 开始时间
 start_date = DateTimeUtil.get_pre_tran_day()
+# 结束时间
 end_date = current_date
-# ['603797.XSHG','000002.XSHG']
 
 panel = get_price(stocks_list, start_date=start_date, end_date=end_date, frequency='daily', fields=None,
                   skip_paused=False, fq=None)
@@ -44,7 +46,7 @@ df_volume.fillna(value=0.0, inplace=True)  # 替换空数据
 for date in date_list:
     df_volume = df_volume[~df_volume[date].isin([0.0])]
 
-print(df_volume)
+# print(df_volume)
 
 #  成交量是过去5个交易日平均值的2倍
 df_volume['mean'] = df_volume[date_list[4]] / (
@@ -81,9 +83,8 @@ for x in df_mean_index_list:
     if not JoinQuantUtil.verify_stock(x):
         set.append(x)
 
-df_mean_final = df_mean.drop(set, axis=0)  # 利用drop方法将含有特定数值的列删除
-
 # 删除这些不满足条件的股票
+df_mean_final = df_mean.drop(set, axis=0)  # 利用drop方法将含有特定数值的列删除
 
 print("-------------final ------------")
 print(df_mean_final)
