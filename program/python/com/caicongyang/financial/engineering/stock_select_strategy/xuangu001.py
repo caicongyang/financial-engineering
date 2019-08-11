@@ -8,11 +8,11 @@
 当日成交量 > 前5个交易日成交量均值
 当前成交量 > 前一个交易日的成交量
 """
-
 import pandas as pd
 from jqdatasdk import *
+from program.python.com.caicongyang.financial.engineering.utils import DateTimeUtil
 
-auth('13774598865', '24777365ccy')
+auth('13774598865', '123456')
 
 # 列多的时候，不隐藏
 pd.set_option('expand_frame_repr', False)
@@ -20,90 +20,83 @@ pd.set_option('expand_frame_repr', False)
 # 获取所有的股票
 stocks_list = list(get_all_securities(['stock']).index)
 
-current_date = '2019-07-01'
-start_date = '2019-06-24'
-end_date = '2019-07-02'
+# 当前的时间
+current_date = DateTimeUtil.get_current_day()
+
+start_date = DateTimeUtil.get_pre_tran_day()
+end_date = current_date
+# ['603797.XSHG','000002.XSHG']
 
 panel = get_price(stocks_list, start_date=start_date, end_date=end_date, frequency='daily', fields=None,
                   skip_paused=False, fq=None)
 
-df_volume = panel['volume']  # 获取开盘价的[pandas.DataFrame],  行索引是[datetime.datetime]对象, 列索引是股票代号
-# print(df_volume)
+# 获取所有股票的成交量
+df_volume = panel['volume']
 
-df = df_volume.stack().unstack(0)  # 列转行
-df.replace('NaN', 0.0, inplace=True)  # 替换空数据
-df.fillna(value=0.0, inplace=True)  # 替换空数据
-df = df[~df['2019-06-25'].isin([0.0])]
-df = df[~df['2019-06-27'].isin([0.0])]
-df = df[~df['2019-06-24'].isin([0.0])]
-df = df[~df['2019-06-26'].isin([0.0])]
-df = df[~df['2019-06-28'].isin([0.0])]
-df = df[~df['2019-07-01'].isin([0.0])]
+# 所有的交易时间段
+date_list = df_volume.index.strftime('%Y-%m-%d').tolist()
 
-print('--------------------------------------next  mean')
+df_volume = df_volume.stack().unstack(0)  # 列转行
+df_volume.replace('NaN', 0.0, inplace=True)  # 替换空数据
+df_volume.fillna(value=0.0, inplace=True)  # 替换空数据
 
-# 成交量是过去5个交易日平均值的3倍
-df['mean'] = df['2019-07-01'] / (
-        (df['2019-06-27'] + df['2019-06-26'] + df['2019-06-25'] + df['2019-06-24'] + df['2019-06-28']) / 5)
-df2 = df[df['mean'] > 2]
+for date in date_list:
+    df_volume = df_volume[~df_volume[date].isin([0.0])]
 
-print(df2)
+print(df_volume)
 
-print('-------------------***')
+#  成交量是过去5个交易日平均值的2倍
+df_volume['mean'] = df_volume[date_list[4]] / (
+        (df_volume[date_list[3]] + df_volume[date_list[2]] + df_volume[date_list[1]] + df_volume[date_list[0]]) / 4)
+df_mean = df_volume[df_volume['mean'] > 2]
 
-df5 = df2
-df5.columns = df5.columns.map(str)
+columns_list = df_mean.columns.tolist()
 
-# 成交量
-df5['lastcompare'] = df5['2019-07-01 00:00:00'] / df5['2019-06-28 00:00:00']
-df6 = df5[df5['lastcompare'] > 2]
-
-df7 = df6.sort_values(by="mean", ascending=False)
-print(df7)
-
-print('--------------')
+# print('-------------------以上计算所有股票的最后一天成交量大于前面4天的2倍的股票-------------')
 
 
-print(df7.index.tolist())
+# 当前成交量成交量 与前一天的比较
 
-"""
-选取主力净占比(%) 大于1的股票
-"""
+df_mean['lastDayCompare'] = df_mean[columns_list[4]] / df_mean[columns_list[3]]
 
-flow = get_money_flow(df7.index.tolist(), start_date=current_date, end_date=current_date,
-                      fields=["date", "sec_code", "net_pct_main"], count=None)
-flow = flow[flow['net_pct_main'] > 20]
-flow = flow[flow['net_pct_main'] < 60]
+# df_mean["lastDayCompare"] = df_mean[[columns_list[4], columns_list[3]]].apply(
+#     lambda x: x[columns_list[4]] + x[columns_list[3]], axis=1)
 
-flow = flow.sort_values(by="net_pct_main", ascending=False)
+# print(df_mean)
 
-print(flow)
+df_mean = df_mean[df_mean['lastDayCompare'] < 70]
+#
+df_mean = df_mean[df_mean['lastDayCompare'] > 2]
+#
+df_mean = df_mean.sort_values(by="mean", ascending=False)
 
-# 所选出股票的行业数据
-stock_code_list = flow['sec_code'].tolist()
-for stock_code in stock_code_list:
-    d = get_industry(stock_code, date=current_date)
-    try:
-        print(stock_code + ':' + d[stock_code]['sw_l2']['industry_name'])
-    except:
-        print(stock_code + ':' + '异常')
+# pandas显示所有行
+pd.set_option('display.max_rows', None)
+print(df_mean)
 
 #
-# tolist = flow['sec_code'].tolist()
+# """
+# 选取主力净占比(%) 大于1的股票
+# """
 #
-# industry = get_industry(tolist, date="2018-06-01")
+# flow = get_money_flow(df7.index.tolist(), start_date='2019-06-20', end_date='2019-06-20',
+#                       fields=["date", "sec_code", "net_pct_main", 'net_pct_xl', 'net_pct_l'], count=None)
 #
-# print(industry)
-
-
-# d = get_industry("600519.XSHG", date="2018-06-01")
-# print(d['industry_name'])
-
-# 新增成交量大于五日均线
-# df['mean'] = df.apply(
-#     lambda x: x['2019-06-28'] / (
-#             (x['2019-06-21'] + x['2019-06-24'] + x['2019-06-24'] + x['2019-06-26'] + x['2019-06-27']) / 4), axis=1)
-
-
-# 队列进行操作
-# flow['行业'] = flow['sec_code'].map(lambda x: _get_stock_industry(x))
+# print(flow)
+# flow = flow[flow['net_pct_main'] > 20]
+# flow = flow[flow['net_pct_main'] < 60]
+#
+# flow = flow.sort_values(by="net_pct_main", ascending=False)
+#
+# print(flow)
+#
+# print('-------------------flow-------------')
+#
+# # 所选出股票的行业数据
+# stock_code_list = flow['sec_code'].tolist()
+# for stock_code in stock_code_list:
+#     d = get_industry(stock_code, date=current_date)
+#     try:
+#         print(stock_code + ':' + d[stock_code]['sw_l2']['industry_name'])
+#     except:
+#         print(stock_code + ':' + '异常')

@@ -9,7 +9,7 @@
 import pandas as pd
 from jqdatasdk import *
 
-auth('13774598865', '24777365ccy')
+auth('13774598865', '123456')
 
 # 列多的时候，不隐藏
 pd.set_option('expand_frame_repr', False)
