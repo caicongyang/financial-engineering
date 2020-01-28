@@ -9,7 +9,6 @@ Mysql工具箱
 __author__ = 'caicongyang'
 
 import pandas as pd
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -57,6 +56,7 @@ class MySQLUtil:
         session = sessionmaker(bind=self.engine)
         session = session()
         session.execute(insert_sql, params=args)
+        session.commit()
         session.close()
 
     def update(self, update_sql, args):
@@ -82,27 +82,33 @@ class MySQLUtil:
         conn.close()
         return query_result
 
-# # for test
-# data1 = {'stock_code': ['600001', '600002', '600003', '600004', '600005'],
-#          'stock_name': ['广发证券', '兴业证券', '东兴证券', '中信证券', '山西证券'],
-#          'trading_day': ['2019-01-01', '2019-01-01', '2019-01-01', '2019-01-01', '2019-01-01'],
-#          'high': [10.11, 10.11, 10.11, 10.11, 10.11],
-#          'low': [10.11, 10.11, 10.11, 10.11, 10.11],
-#          'open': [10.11, 10.11, 10.11, 10.11, 10.11],
-#          'close': [10.11, 10.11, 10.11, 10.11, 10.11],
-#          'volume':[1111000095.10,451000095.10,1000095.10,31000095.10,21000095.10],
-#          'money':[1111000095.10,451000095.10,1000095.10,31000095.10,21000095.10]
-#          }
-#
-# index = pd.Index(data=data1['stock_code'], name="stock_code")
-#
-# df = pd.DataFrame(data1, index=index)
-#
-# # df = pd.DataFrame(data1)
-#
-# print(df)
-#
+    # # for test
+    # data1 = {'stock_code': ['600001', '600002', '600003', '600004', '600005'],
+    #          'stock_name': ['广发证券', '兴业证券', '东兴证券', '中信证券', '山西证券'],
+    #          'trading_day': ['2019-01-01', '2019-01-01', '2019-01-01', '2019-01-01', '2019-01-01'],
+    #          'high': [10.11, 10.11, 10.11, 10.11, 10.11],
+    #          'low': [10.11, 10.11, 10.11, 10.11, 10.11],
+    #          'open': [10.11, 10.11, 10.11, 10.11, 10.11],
+    #          'close': [10.11, 10.11, 10.11, 10.11, 10.11],
+    #          'volume':[1111000095.10,451000095.10,1000095.10,31000095.10,21000095.10],
+    #          'money':[1111000095.10,451000095.10,1000095.10,31000095.10,21000095.10]
+    #          }
+    #
+    # index = pd.Index(data=data1['stock_code'], name="stock_code")
+    #
+    # df = pd.DataFrame(data1, index=index)
+    #
+    # # df = pd.DataFrame(data1)
+    #
+    # print(df)
+    #
+
 # x = MySQLUtil('127.0.0.1', '3306', 'root', 'root', 'stock')
+# inser_sql = 'insert into T_Stock(stock_code,stock_name,trading_day,open,close,high,low,volume,money) values(:stock_code,:stock_name,:trading_day,:open,:close,:high,:low,:volume,:money)';
+# json_str = {'open': 15.92, 'close': 15.54, 'high': 15.92, 'low': 15.39, 'volume': 110059207.0, 'money': 1723394336.66, 'stock_code': '000001.XSHE', 'trading_day': '2020-01-23','stock_name':''}
+# # data2 = json.loads(json_str)
+
+# x.insert(inser_sql, json_str);
 
 # query = x.query('select * from t_stock')
 # print(query)

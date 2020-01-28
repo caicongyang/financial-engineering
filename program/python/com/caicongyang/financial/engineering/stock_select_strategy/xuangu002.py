@@ -3,10 +3,12 @@
 
 
 """
-主力净占比(%)
+把聚宽的数据导入到本地数据库
 """
 
 import pandas as pd
+import json
+from program.python.com.caicongyang.financial.engineering.utils.MySQLUtil import MySQLUtil
 from jqdatasdk import *
 
 auth('13774598865', '123456')
@@ -17,7 +19,42 @@ pd.set_option('expand_frame_repr', False)
 # 获取所有的股票
 stocks_list = list(get_all_securities(['stock']).index)
 
-print('--------------')
+
+def getStockPrice(stock_code, trading_day):
+    """
+    获取某一只股票的交易数据
+    :param stock_code: 
+    :param trading_day: 
+    :return: 
+    """
+
+    df = get_price(stock_code, start_date=trading_day, end_date=trading_day, frequency='daily', fields=None,
+                   skip_paused=False, fq=None)
+
+    df['stock_code'] = stock_code
+    df['stock_name'] = ''
+    df['trading_day'] = trading_day
+    # 删除行索引
+    df2 = df.reset_index(drop=True)
+
+    # 将列索引变成df的行索引
+    # df2 = df.set_index("stock_code")
+    # dataframe转成 json 字符串
+    json_str = df2.to_json(orient='index')
+    # 转成json 字符串
+    json_obj = json.loads(json_str)
+    insert_data = json_obj['0']
+    inser_sql = 'insert into T_Stock(stock_code,stock_name,trading_day,open,close,high,low,volume,money) values(:stock_code,:stock_name,:trading_day,:open,:close,:high,:low,:volume,:money)';
+
+    x = MySQLUtil('127.0.0.1', '3306', 'root', 'root', 'stock')
+    x.insert(inser_sql, insert_data)
+
+
+for y in ['2020-01-06','2020-01-07','2020-01-08']:
+    for x in stocks_list:
+        getStockPrice(x, y)
+
+# print('--------------')
 
 # flow = get_money_flow(stocks_list, start_date='2019-06-28', end_date='2019-06-29',
 #                       fields=["date", "sec_code", "net_pct_main", "net_pct_xl", "net_pct_l"], count=None)
@@ -30,9 +67,6 @@ print('--------------')
 #
 # print(df6)
 
-d = get_industry("000877.XSHE", date="2018-06-01")
-print(d)
-print(d['000877.XSHE']['sw_l1']['industry_name'])
-
-
-
+# d = get_industry("000877.XSHE", date="2018-06-01")
+# print(d)
+# print(d['000877.XSHE']['sw_l1']['industry_name'])
