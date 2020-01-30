@@ -7,3 +7,6 @@ import json
 
 jsonData = '{"ponyMa":"tencent","jackMa":"alibaba"}'
 j = json.loads(jsonData)
+print(j['ponyMa'])
+print(j['jackMa'])
+

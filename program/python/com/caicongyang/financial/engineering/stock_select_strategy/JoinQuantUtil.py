@@ -25,11 +25,14 @@ def verify_stock(stock_code, start_date, end_date):
     # 收盘价> 最高价
     last["compare2"] = last["close"] / last["high"]
 
-
     if float(last["compare2"].tail(1)) < 1 or float(last["compare1"].tail(1)) < 1:
         return False
     else:
         return True
 
 
-# print(verify_stock("002175.XSHE", '2019-09-06', '2019-09-12'))
+def get_stock_concept(stock_code):
+    return get_concept(stock_code, DateTimeUtil.get_current_day())
+
+
+print(verify_stock("002175.XSHE", '2019-09-06', '2019-09-12'))

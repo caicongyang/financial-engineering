@@ -10,6 +10,7 @@ import pandas as pd
 import json
 from program.python.com.caicongyang.financial.engineering.utils.MySQLUtil import MySQLUtil
 from jqdatasdk import *
+import sys
 
 auth('13774598865', '123456')
 
@@ -18,6 +19,9 @@ pd.set_option('expand_frame_repr', False)
 
 # 获取所有的股票
 stocks_list = list(get_all_securities(['stock']).index)
+
+
+print(sys.path)
 
 
 def getStockPrice(stock_code, trading_day):
@@ -50,9 +54,9 @@ def getStockPrice(stock_code, trading_day):
     x.insert(inser_sql, insert_data)
 
 
-for y in ['2020-01-06','2020-01-07','2020-01-08']:
-    for x in stocks_list:
-        getStockPrice(x, y)
+# for y in ['2020-01-02']:
+#     for x in stocks_list:
+#         getStockPrice(x, y)
 
 # print('--------------')
 
