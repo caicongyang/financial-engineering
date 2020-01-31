@@ -89,7 +89,10 @@ for x in df_mean_index_list:
 # 删除这些不满足条件的股票
 df_mean_final = df_mean.drop(set, axis=0)  # 利用drop方法将含有特定数值的列删除
 
-print("-------------final ------------")
+print("-------------final result ------------")
 print(df_mean_final)
-print(df_mean_final.shape)
+final_list = list(df_mean_final.index)
+
+for x in final_list:
+    print(JoinQuantUtil.get_stock_concept(x));
 

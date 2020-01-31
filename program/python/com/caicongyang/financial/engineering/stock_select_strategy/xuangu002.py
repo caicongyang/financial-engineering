@@ -6,20 +6,24 @@
 把聚宽的数据导入到本地数据库
 """
 
+
+from program.python.com.caicongyang.financial.engineering.utils.MySQLUtil import MySQLUtil
+import jqdatasdk
+import sys
 import pandas as pd
 import json
-from program.python.com.caicongyang.financial.engineering.utils.MySQLUtil import MySQLUtil
-from jqdatasdk import *
-import sys
 
-auth('13774598865', '123456')
+
+jqdatasdk.auth('13774598865', '123456')
 
 # 列多的时候，不隐藏
 pd.set_option('expand_frame_repr', False)
 
 # 获取所有的股票
-stocks_list = list(get_all_securities(['stock']).index)
+# stocks_list = list(get_all_securities(['stock']).index)
 
+
+stocks_list = ['603797.XSHG', '000002.XSHG']
 
 print(sys.path)
 
@@ -32,7 +36,7 @@ def getStockPrice(stock_code, trading_day):
     :return: 
     """
 
-    df = get_price(stock_code, start_date=trading_day, end_date=trading_day, frequency='daily', fields=None,
+    df = jqdatasdk.get_price(stock_code, start_date=trading_day, end_date=trading_day, frequency='daily', fields=None,
                    skip_paused=False, fq=None)
 
     df['stock_code'] = stock_code
@@ -50,13 +54,13 @@ def getStockPrice(stock_code, trading_day):
     insert_data = json_obj['0']
     inser_sql = 'insert into T_Stock(stock_code,stock_name,trading_day,open,close,high,low,volume,money) values(:stock_code,:stock_name,:trading_day,:open,:close,:high,:low,:volume,:money)';
 
-    x = MySQLUtil('127.0.0.1', '3306', 'root', 'root', 'stock')
+    x = MySQLUtil('127.0.0.1', '3306', 'root', '24777365ccyCCY!', 'stock')
     x.insert(inser_sql, insert_data)
 
 
-# for y in ['2020-01-02']:
-#     for x in stocks_list:
-#         getStockPrice(x, y)
+for y in ['2020-01-02']:
+    for x in stocks_list:
+        getStockPrice(x, y)
 
 # print('--------------')
 
