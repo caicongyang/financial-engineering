@@ -50,13 +50,13 @@ def getStockPrice(stock_code, trading_day):
     insert_data = json_obj['0']
     inser_sql = 'insert into T_Stock(stock_code,stock_name,trading_day,open,close,high,low,volume,money) values(:stock_code,:stock_name,:trading_day,:open,:close,:high,:low,:volume,:money)';
 
-    x = MySQLUtil('127.0.0.1', '3306', 'root', 'root', 'stock')
+    x = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
     x.insert(inser_sql, insert_data)
 
 
-# for y in ['2020-01-02']:
-#     for x in stocks_list:
-#         getStockPrice(x, y)
+for y in ['2020-02-03']:
+    for x in stocks_list:
+        getStockPrice(x, y)
 
 # print('--------------')
 
