@@ -21,7 +21,7 @@ class MySQLUtil:
         self.password = password
         self.db = schema
         self.write_mode = 'append'
-        self.connect_url = 'mysql+pymysql://' + username + ':' + password + '@' + host + ':' + port + '/' + schema + '?charset=utf8'
+        self.connect_url = 'mysql+pymysql://' + username + ':' + password + '@' + host + ':' + port + '/' + schema + '?charset=utf8mb4'
         self.engine = create_engine(self.connect_url, echo=True, pool_size=20)
 
     def write2mysql(self, table_name, df):
