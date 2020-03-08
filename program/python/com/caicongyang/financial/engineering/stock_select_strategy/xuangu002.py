@@ -20,11 +20,10 @@ pd.set_option('expand_frame_repr', False)
 # 获取所有的股票
 stocks_list = list(get_all_securities(['stock']).index)
 
-
 print(sys.path)
 
 
-def getStockPrice(stock_code, trading_day):
+def getStockPrice(engine, stock_code, trading_day):
     """
     获取某一只股票的交易数据
     :param stock_code: 
@@ -49,14 +48,14 @@ def getStockPrice(stock_code, trading_day):
     json_obj = json.loads(json_str)
     insert_data = json_obj['0']
     inser_sql = 'insert into T_Stock(stock_code,stock_name,trading_day,open,close,high,low,volume,money) values(:stock_code,:stock_name,:trading_day,:open,:close,:high,:low,:volume,:money)';
-
-    x = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
-    x.insert(inser_sql, insert_data)
+    engine.insert(inser_sql, insert_data)
 
 
-for y in ['2020-02-03']:
+engine = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
+
+for y in ['2020-03-05', '2020-03-04', '2020-03-03', '2020-03-02','2020-02-17']:
     for x in stocks_list:
-        getStockPrice(x, y)
+        getStockPrice(engine, x, y)
 
 # print('--------------')
 
