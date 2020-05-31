@@ -12,19 +12,11 @@ from sqlalchemy import create_engine
 import sys
 import os
 
-
-sys.path.append("/data/python/program")
-sys.path.append(os.path.realpath('/data/python/program'))
-sys.path.append(os.path.realpath('/data/python/program/python/com/caicongyang/financial/engineering/utils'))
-
 print(sys.path)
-
 
 from program.python.com.caicongyang.financial.engineering.utils.MySQLUtil import MySQLUtil
 
-
 from jqdatasdk import *
-
 
 auth('13774598865', '123456')
 
@@ -67,7 +59,6 @@ def getStockPrice(engine, stock_code, trading_day):
         engine.insert(inser_sql, insert_data)
     except:
         print("Unexpected error:")
-
 
 
 engine = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
