@@ -12,19 +12,18 @@ from sqlalchemy import create_engine
 import sys
 import os
 
+
+
 print(sys.path)
 
 from program.python.com.caicongyang.financial.engineering.utils.MySQLUtil import *
+from program.python.com.caicongyang.financial.engineering.utils.DateTimeUtil import *
 
 from jqdatasdk import *
 
 auth('13774598865', '123456')
 
-# 列多的时候，不隐藏
-pd.set_option('expand_frame_repr', False)
 
-# 获取所有的股票
-stocks_list = list(get_all_securities(['stock']).index)
 
 print(sys.path)
 
@@ -61,9 +60,26 @@ def getStockPrice(engine, stock_code, trading_day):
         print("Unexpected error:")
 
 
-engine = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
-
-# 补偿数据所用
-for y in ['2020-05-29']:
+def getAllStockPrice(trading_day):
+    # 数据库连接池
+    engine = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
+    # 获取所有的股票
+    stocks_list = list(get_all_securities(['stock']).index)
     for x in stocks_list:
-        getStockPrice(engine, x, y)
+        getStockPrice(engine, x, trading_day)
+
+
+currentDay = get_current_day()
+week = datetime.datetime.strptime(currentDay, '%Y-%m-%d').strftime("%w")
+
+# 上证指数 "000001.XSHG"
+df = get_price('000001.XSHG', start_date=currentDay, end_date=currentDay, frequency='daily', fields=None,
+               skip_paused=False, fq=None)
+
+print(df)
+if df.empty:
+    print("交易锁暂停交易：" + currentDay)
+else:
+    getAllStockPrice(currentDay)
+
+
