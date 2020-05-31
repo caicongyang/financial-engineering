@@ -24,13 +24,15 @@ stocks_list = list(get_all_securities(['stock']).index)
 
 
 # 当前的时间
-current_date = DateTimeUtil.get_current_day()
-#current_date = '2019-09-16'
+#current_date = DateTimeUtil.get_current_day()
+current_date = '2020-05-18'
 # 开始时间
-start_date = DateTimeUtil.get_pre_tran_day()
-#start_date = '2019-09-20'
+#start_date = DateTimeUtil.get_pre_tran_day()
+start_date = '2020-05-12'
 # 结束时间
 end_date = current_date
+
+
 
 panel = get_price(stocks_list, start_date=start_date, end_date=end_date, frequency='daily', fields=None,
                   skip_paused=False, fq=None)
@@ -54,7 +56,7 @@ for date in date_list:
 #  成交量是过去5个交易日平均值的2倍
 df_volume['mean'] = df_volume[date_list[4]] / (
         (df_volume[date_list[3]] + df_volume[date_list[2]] + df_volume[date_list[1]] + df_volume[date_list[0]]) / 4)
-df_mean = df_volume[df_volume['mean'] > 1.5]
+df_mean = df_volume[df_volume['mean'] > 1.8]
 
 columns_list = df_mean.columns.tolist()
 
@@ -72,7 +74,7 @@ df_mean['lastDayCompare'] = df_mean[columns_list[4]] / df_mean[columns_list[3]]
 
 df_mean = df_mean[df_mean['lastDayCompare'] < 60]
 #
-df_mean = df_mean[df_mean['lastDayCompare'] > 1.5]
+df_mean = df_mean[df_mean['lastDayCompare'] > 1.8]
 
 #
 df_mean = df_mean.sort_values(by="mean", ascending=False)

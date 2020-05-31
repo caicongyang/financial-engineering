@@ -24,11 +24,11 @@ stocks_list = list(get_all_securities(['stock']).index)
 
 
 # 当前的时间
-#current_date = DateTimeUtil.get_current_day()
-current_date = '2020-01-23'
+current_date = DateTimeUtil.get_current_day()
+#current_date = '2020-05-15'
 # 开始时间
-#start_date = DateTimeUtil.get_pre_tran_day()
-start_date = '2020-01-20'
+start_date = DateTimeUtil.get_pre_tran_day()
+#start_date = '2020-01-20'
 # 结束时间
 end_date = current_date
 
