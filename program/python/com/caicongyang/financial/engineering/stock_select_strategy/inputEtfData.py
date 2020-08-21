@@ -12,18 +12,19 @@ from sqlalchemy import create_engine
 import sys
 import os
 
-
-
 print(sys.path)
 
 from program.python.com.caicongyang.financial.engineering.utils.MySQLUtil import *
-from program.python.com.caicongyang.financial.engineering.utils.DateTimeUtil import *
 
 from jqdatasdk import *
 
 auth('13774598865', '123456')
 
+# 列多的时候，不隐藏
+pd.set_option('expand_frame_repr', False)
 
+# 获取所有的股票
+stocks_list = list(get_all_securities(['etf']).index)
 
 print(sys.path)
 
@@ -31,9 +32,9 @@ print(sys.path)
 def getStockPrice(engine, stock_code, trading_day):
     """
     获取某一只股票的交易数据
-    :param stock_code: 
-    :param trading_day: 
-    :return: 
+    :param stock_code:
+    :param trading_day:
+    :return:
     """
 
     df = get_price(stock_code, start_date=trading_day, end_date=trading_day, frequency='daily', fields=None,
@@ -53,33 +54,16 @@ def getStockPrice(engine, stock_code, trading_day):
     json_obj = json.loads(json_str)
 
     insert_data = json_obj['0']
-    inser_sql = 'insert into T_Stock(stock_code,stock_name,trading_day,open,close,high,low,volume,money) values(:stock_code,:stock_name,:trading_day,:open,:close,:high,:low,:volume,:money)';
+    inser_sql = 'insert into T_etf(stock_code,stock_name,trading_day,open,close,high,low,volume,money) values(:stock_code,:stock_name,:trading_day,:open,:close,:high,:low,:volume,:money)';
     try:
         engine.insert(inser_sql, insert_data)
     except:
         print("Unexpected error:")
 
 
-def getAllStockPrice(trading_day):
-    # 数据库连接池
-    engine = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
-    # 获取所有的股票
-    stocks_list = list(get_all_securities(['stock']).index)
+engine = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
+
+# 补偿数据所用
+for y in ['2020-07-14','2020-07-15','2020-07-16','2020-07-17']:
     for x in stocks_list:
-        getStockPrice(engine, x, trading_day)
-
-
-currentDay = get_current_day()
-week = datetime.datetime.strptime(currentDay, '%Y-%m-%d').strftime("%w")
-
-# 上证指数 "000001.XSHG"
-df = get_price('000001.XSHG', start_date=currentDay, end_date=currentDay, frequency='daily', fields=None,
-               skip_paused=False, fq=None)
-
-print("current:"+df)
-if df.empty:
-    print("交易锁暂停交易：" + currentDay)
-else:
-    getAllStockPrice(currentDay)
-
-
+        getStockPrice(engine, x, y)
