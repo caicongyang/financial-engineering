@@ -39,6 +39,9 @@ def getStockPrice(engine, stock_code, trading_day):
     df = get_price(stock_code, start_date=trading_day, end_date=trading_day, frequency='daily', fields=None,
                    skip_paused=False, fq=None)
 
+    # 判断为空说明是脏数据
+    if df['money'] == 0.0:
+        return
     df['stock_code'] = stock_code
     df['stock_name'] = ''
     df['trading_day'] = trading_day

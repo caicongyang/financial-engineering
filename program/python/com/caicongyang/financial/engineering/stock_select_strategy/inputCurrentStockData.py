@@ -12,8 +12,6 @@ from sqlalchemy import create_engine
 import sys
 import os
 
-
-
 print(sys.path)
 
 from program.python.com.caicongyang.financial.engineering.utils.MySQLUtil import *
@@ -22,8 +20,6 @@ from program.python.com.caicongyang.financial.engineering.utils.DateTimeUtil imp
 from jqdatasdk import *
 
 auth('13774598865', '123456')
-
-
 
 print(sys.path)
 
@@ -38,10 +34,13 @@ def getStockPrice(engine, stock_code, trading_day):
 
     df = get_price(stock_code, start_date=trading_day, end_date=trading_day, frequency='daily', fields=None,
                    skip_paused=False, fq=None)
-
+    # 判断为空说明是脏数据
+    if df['money'] == 0.0:
+        return
     df['stock_code'] = stock_code
     df['stock_name'] = ''
     df['trading_day'] = trading_day
+
     # 删除行索引
     df2 = df.reset_index(drop=True)
 
@@ -59,27 +58,24 @@ def getStockPrice(engine, stock_code, trading_day):
     except:
         print("Unexpected error:")
 
-
-def getAllStockPrice(trading_day):
-    # 数据库连接池
-    engine = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
-    # 获取所有的股票
-    stocks_list = list(get_all_securities(['stock']).index)
-    for x in stocks_list:
-        getStockPrice(engine, x, trading_day)
-
-
-currentDay = get_current_day()
-week = datetime.datetime.strptime(currentDay, '%Y-%m-%d').strftime("%w")
-
-# 上证指数 "000001.XSHG"
-df = get_price('000001.XSHG', start_date=currentDay, end_date=currentDay, frequency='daily', fields=None,
-               skip_paused=False, fq=None)
-
-print("current:"+df)
-if df.empty:
-    print("交易锁暂停交易：" + currentDay)
-else:
-    getAllStockPrice(currentDay)
-
-
+# def getAllStockPrice(trading_day):
+#     # 数据库连接池
+#     engine = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
+#     # 获取所有的股票
+#     stocks_list = list(get_all_securities(['stock']).index)
+#     for x in stocks_list:
+#         getStockPrice(engine, x, trading_day)
+#
+#
+# currentDay = get_current_day()
+# week = datetime.datetime.strptime(currentDay, '%Y-%m-%d').strftime("%w")
+#
+# # 上证指数 "000001.XSHG"
+# df = get_price('000001.XSHG', start_date=currentDay, end_date=currentDay, frequency='daily', fields=None,
+#                skip_paused=False, fq=None)
+#
+# print("current:"+df)
+# if df.empty:
+#     print("交易锁暂停交易：" + currentDay)
+# else:
+#     getAllStockPrice(currentDay)

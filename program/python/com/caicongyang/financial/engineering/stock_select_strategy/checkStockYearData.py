@@ -43,7 +43,9 @@ def getStockPrice(engine, stock_code, trading_day):
 
     df = get_price(stock_code, start_date=trading_day, end_date=trading_day, frequency='daily', fields=None,
                    skip_paused=False, fq=None)
-
+    # 判断为空说明是脏数据
+    if df['money'] == 0.0:
+        return
     df['stock_code'] = stock_code
     df['stock_name'] = ''
     df['trading_day'] = trading_day
@@ -72,7 +74,7 @@ engine = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
 year = getAllDayPerYear(2020)
 for x in year:
     if x < currentDay:
-        df = engine.read_from_mysql(query_sql + "'"+x.__str__()+"'")
+        df = engine.read_from_mysql(query_sql + "'" + x.__str__() + "'")
         print(df)
         if df.size == 0:
             # 上证指数 "000001.XSHG"
