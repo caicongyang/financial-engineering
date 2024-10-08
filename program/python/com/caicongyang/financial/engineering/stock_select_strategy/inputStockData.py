@@ -18,7 +18,7 @@ from program.python.com.caicongyang.financial.engineering.utils.MySQLUtil import
 
 from jqdatasdk import *
 
-auth('13774598865', '123456')
+auth('18558611751', '24777365ccyCCY')
 
 # 列多的时候，不隐藏
 pd.set_option('expand_frame_repr', False)
@@ -40,6 +40,9 @@ def getStockPrice(engine, stock_code, trading_day):
     df = get_price(stock_code, start_date=trading_day, end_date=trading_day, frequency='daily', fields=None,
                    skip_paused=False, fq=None)
 
+    # 判断为空说明是脏数据
+    if df['money'].empty:
+        return
     df['stock_code'] = stock_code
     df['stock_name'] = ''
     df['trading_day'] = trading_day
@@ -50,6 +53,8 @@ def getStockPrice(engine, stock_code, trading_day):
     # df2 = df.set_index("stock_code")
     # dataframe转成 json 字符串
     json_str = df2.to_json(orient='index')
+
+    print(json_str)
     # 转成json 字符串
     json_obj = json.loads(json_str)
 
@@ -64,6 +69,6 @@ def getStockPrice(engine, stock_code, trading_day):
 engine = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
 
 # 补偿数据所用
-for y in ['2020-05-29']:
+for y in ['2021-12-10']:
     for x in stocks_list:
         getStockPrice(engine, x, y)

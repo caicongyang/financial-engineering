@@ -10,7 +10,6 @@ import time
 import arrow
 
 
-
 def get_current_day():
     """
     获取当天时间的字符串时间
@@ -18,6 +17,11 @@ def get_current_day():
     """
     var = time.strftime('%Y-%m-%d')
     return var
+
+
+def get_current_half_day():
+    a = datetime.datetime.now().strftime("%Y-%m-%d") + " 12:00:00"
+    return a
 
 
 def get_pre_5days(num):
@@ -108,7 +112,6 @@ def getAllDayPerYear(years):
         all_date_list.append(b)
     # print(all_date_list)
     return all_date_list
-
 
 # print(get_current_day)
 # print("今日的日期：" + time.strftime("%Y-%m-%d"))

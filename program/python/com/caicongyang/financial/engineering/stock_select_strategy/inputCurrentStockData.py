@@ -19,7 +19,7 @@ from program.python.com.caicongyang.financial.engineering.utils.DateTimeUtil imp
 
 from jqdatasdk import *
 
-auth('13774598865', '123456')
+auth('18558611751', '123456')
 
 print(sys.path)
 
@@ -35,7 +35,7 @@ def getStockPrice(engine, stock_code, trading_day):
     df = get_price(stock_code, start_date=trading_day, end_date=trading_day, frequency='daily', fields=None,
                    skip_paused=False, fq=None)
     # 判断为空说明是脏数据
-    if df['money'] == 0.0:
+    if df['money'].empty:
         return
     df['stock_code'] = stock_code
     df['stock_name'] = ''

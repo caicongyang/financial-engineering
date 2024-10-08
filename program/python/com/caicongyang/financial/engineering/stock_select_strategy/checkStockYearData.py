@@ -18,7 +18,7 @@ from program.python.com.caicongyang.financial.engineering.utils.MySQLUtil import
 from program.python.com.caicongyang.financial.engineering.utils.DateTimeUtil import *
 from jqdatasdk import *
 
-auth('13774598865', '123456')
+auth('18558611751', '24777365ccyCCY')
 
 # 列多的时候，不隐藏
 pd.set_option('expand_frame_repr', False)
@@ -44,7 +44,7 @@ def getStockPrice(engine, stock_code, trading_day):
     df = get_price(stock_code, start_date=trading_day, end_date=trading_day, frequency='daily', fields=None,
                    skip_paused=False, fq=None)
     # 判断为空说明是脏数据
-    if df['money'] == 0.0:
+    if df['money'].empty:
         return
     df['stock_code'] = stock_code
     df['stock_name'] = ''
@@ -71,7 +71,7 @@ currentDay = get_current_day()
 
 engine = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
 
-year = getAllDayPerYear(2020)
+year = getAllDayPerYear(2021)
 for x in year:
     if x < currentDay:
         df = engine.read_from_mysql(query_sql + "'" + x.__str__() + "'")

@@ -71,16 +71,24 @@ class MySQLUtil:
         session.execute(update_sql, params=args)
         session.close()
 
-    def query(self, query_sql):
+    def query(self, query_sql, args):
         conn = self.engine.raw_connection()
         cursor = conn.cursor()
         cursor.execute(
-            query_sql
+            query_sql, params=args
         )
         query_result = cursor.fetchall()
         cursor.close()
         conn.close()
         return query_result
+
+    def querybyseesion(self, query_sql, args):
+        session = sessionmaker(bind=self.engine)
+        session = session()
+        execute = session.execute(query_sql, params=args)
+        results = execute.fetchall()
+        session.close()
+        return results
 
     # # for test
     # data1 = {'stock_code': ['600001', '600002', '600003', '600004', '600005'],
@@ -103,7 +111,8 @@ class MySQLUtil:
     # print(df)
     #
 
-# x = MySQLUtil('127.0.0.1', '3306', 'root', 'root', 'stock')
+
+x = MySQLUtil('49.235.178.21', '3306', 'root', '24777365ccyCCY!', 'stock')
 # inser_sql = 'insert into T_Stock(stock_code,stock_name,trading_day,open,close,high,low,volume,money) values(:stock_code,:stock_name,:trading_day,:open,:close,:high,:low,:volume,:money)';
 # json_str = {'open': 15.92, 'close': 15.54, 'high': 15.92, 'low': 15.39, 'volume': 110059207.0, 'money': 1723394336.66, 'stock_code': '000001.XSHE', 'trading_day': '2020-01-23','stock_name':''}
 # # data2 = json.loads(json_str)
@@ -123,10 +132,21 @@ class MySQLUtil:
 
 # x.insert('123', '123')
 #
-# result = x.query("select * from t_stock where stock_code ='000001'")
+# stock_code = '000001.XSHE'
+# trading_day = '2039-11-01'
+# paramsDict = {"stock_code": stock_code, "trading_day": trading_day}
+#
+# result = x.querybyseesion(
+#     "select * from T_Stock_Week where  stock_code = :stock_code and trading_day = :trading_day ",
+#     paramsDict)
+#
 # print(result)
-# print(result[0])
-# print(result)
+# print(len(result))
+#
+#
+# for result in result:
+#     print((result))
+
 #
 # if len(result) > 0:
 #     print("good")
