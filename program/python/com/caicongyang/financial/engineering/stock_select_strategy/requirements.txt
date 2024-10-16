@@ -1,4 +1,0 @@
-pandas==2.2.3
-sqlalchemy==2.0.35
-tushare==1.4.13
-akshare==1.14.93
