@@ -12,8 +12,8 @@ import pymysql
 # 数据库连接信息
 mysql_user = 'root'
 mysql_password = 'root'
-mysql_host = '127.0.0.1'
-mysql_port = '3306'
+mysql_host = '159.138.152.92'
+mysql_port = '3333'
 mysql_db = 'stock'
 table_name = 't_concept'
 table_name2 = 't_concept_stock'
@@ -60,24 +60,24 @@ print(stock_board_concept_name_em_df)
 
 selected_columns_concept_name_em_df = stock_board_concept_name_em_df[['板块名称', '板块代码']]
 selected_columns_concept_name_em_df['source'] = 'eastmoney'
-# df_to_mysql(selected_columns_concept_name_em_df, table_name, column_mapping, mysql_user, mysql_password, mysql_host, mysql_port, mysql_db)
+df_to_mysql(selected_columns_concept_name_em_df, table_name, column_mapping, mysql_user, mysql_password, mysql_host, mysql_port, mysql_db)
 
-concept_list = selected_columns_concept_name_em_df['板块名称'].to_list()
-
-# 获取板块名称和板块代码的字典映射
-concept_code_mapping = dict(zip(selected_columns_concept_name_em_df['板块名称'], selected_columns_concept_name_em_df['板块代码']))
-
-
-for x in concept_list:
-        stock_board_concept_cons_em_df = ak.stock_board_concept_cons_em(symbol=x)
-        df2 =stock_board_concept_cons_em_df[['代码', '名称']]
-        # 获取当前板块的板块代码
-        block_code = concept_code_mapping.get(x, None)
-        # 将板块代码作为新列添加到 df2 中
-        df2['板块代码'] = block_code
-        df2['板块名称'] = x
-        #插入到映射表中
-        df_to_mysql(df2, table_name2, column_mapping2, mysql_user, mysql_password, mysql_host, mysql_port, mysql_db)
+# concept_list = selected_columns_concept_name_em_df['板块名称'].to_list()
+#
+# # 获取板块名称和板块代码的字典映射
+# concept_code_mapping = dict(zip(selected_columns_concept_name_em_df['板块名称'], selected_columns_concept_name_em_df['板块代码']))
+#
+#
+# for x in concept_list:
+#         stock_board_concept_cons_em_df = ak.stock_board_concept_cons_em(symbol=x)
+#         df2 =stock_board_concept_cons_em_df[['代码', '名称']]
+#         # 获取当前板块的板块代码
+#         block_code = concept_code_mapping.get(x, None)
+#         # 将板块代码作为新列添加到 df2 中
+#         df2['板块代码'] = block_code
+#         df2['板块名称'] = x
+#         #插入到映射表中
+#         df_to_mysql(df2, table_name2, column_mapping2, mysql_user, mysql_password, mysql_host, mysql_port, mysql_db)
 
 
 

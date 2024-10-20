@@ -14,10 +14,10 @@ import pymysql
 # 数据库连接信息
 mysql_user = 'root'
 mysql_password = 'root'
-mysql_host = '127.0.0.1'
-mysql_port = '3306'
+mysql_host = '159.138.152.92'
+mysql_port = '3333'
 mysql_db = 'stock'
-table_name = 'T_etf'
+table_name = 't_etf'
 
 # 数据库表字段和 DataFrame 列名的映射
 column_mapping = {
@@ -56,11 +56,15 @@ fund_etf_spot_em_df = ak.fund_etf_spot_em()
 code_list = fund_etf_spot_em_df['代码'].tolist()
 
 for x in code_list:
-    fund_etf_hist_em_df = ak.fund_etf_hist_em(symbol=x, period="daily", start_date="20240901", end_date="20240930",
+    fund_etf_hist_em_df = ak.fund_etf_hist_em(symbol=x, period="daily", start_date="20241011", end_date="20241020",
                                               adjust="")
     fund_etf_hist_em_df['code'] = x
-    # 删除不需要的列
-    fund_etf_hist_em_df.drop(columns=['振幅', '涨跌幅', '涨跌额', '换手率'], inplace=True)
+    # 要删除的列
+    columns_to_drop = ['振幅', '涨跌幅', '涨跌额', '换手率']
+
+    # 删除 DataFrame 中存在的列
+    fund_etf_hist_em_df.drop(columns=[col for col in columns_to_drop if col in fund_etf_hist_em_df.columns],
+                             inplace=True)
 
     # 插入到数据库
     df_to_mysql(fund_etf_hist_em_df, table_name, column_mapping, mysql_user, mysql_password, mysql_host, mysql_port,
