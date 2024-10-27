@@ -90,5 +90,5 @@ def getStockPrice(trade_date):
 
 
 # 补偿数据所用
-for x in ['20241015','20241016']:
+for x in ['20241021','20241022']:
         getStockPrice(x)

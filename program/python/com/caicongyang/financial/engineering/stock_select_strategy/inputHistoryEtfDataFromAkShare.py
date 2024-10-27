@@ -22,6 +22,7 @@ table_name = 't_etf'
 # 数据库表字段和 DataFrame 列名的映射
 column_mapping = {
     'code': 'stock_code',
+    'name': 'stock_name',  # 新增名称字段的映射
     '日期': 'trade_date',
     '开盘': 'open',
     '收盘': 'close',
@@ -52,13 +53,17 @@ def df_to_mysql(df, table_name, column_mapping, mysql_user, mysql_password, mysq
         print(f"An error occurred: {e}")
 
 
+# 获取ETF列表
 fund_etf_spot_em_df = ak.fund_etf_spot_em()
-code_list = fund_etf_spot_em_df['代码'].tolist()
+# 创建代码和名称的映射字典
+code_name_dict = dict(zip(fund_etf_spot_em_df['代码'], fund_etf_spot_em_df['名称']))
 
-for x in code_list:
-    fund_etf_hist_em_df = ak.fund_etf_hist_em(symbol=x, period="daily", start_date="20241011", end_date="20241020",
+for code in code_name_dict.keys():
+    fund_etf_hist_em_df = ak.fund_etf_hist_em(symbol=code, period="daily", start_date="20241023", end_date="20241027",
                                               adjust="")
-    fund_etf_hist_em_df['code'] = x
+    fund_etf_hist_em_df['code'] = code
+    fund_etf_hist_em_df['name'] = code_name_dict[code]  # 添加名称字段
+    
     # 要删除的列
     columns_to_drop = ['振幅', '涨跌幅', '涨跌额', '换手率']
 
@@ -70,3 +75,4 @@ for x in code_list:
     df_to_mysql(fund_etf_hist_em_df, table_name, column_mapping, mysql_user, mysql_password, mysql_host, mysql_port,
                 mysql_db)
 
+print("All ETF data has been processed and inserted into the database.")
