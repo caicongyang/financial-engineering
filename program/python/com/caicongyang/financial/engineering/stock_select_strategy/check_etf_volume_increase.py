@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 # 数据库连接信息
 mysql_user = 'root'
 mysql_password = 'root'
-mysql_host = '159.138.152.92'
+mysql_host = '101.43.6.49'
 mysql_port = '3333'
 mysql_db = 'stock'
 source_table = 't_etf'  # ETF数据表
@@ -20,6 +20,20 @@ target_table = 't_etf_volume_increase'  # ETF成交量增加表
 
 # 创建数据库连接
 engine = create_engine(f'mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_db}')
+
+def check_data_exists(date):
+    """检查指定日期的ETF数据是否存在"""
+    query = text(f"""
+    SELECT COUNT(*) 
+    FROM {source_table}
+    WHERE trade_date = :date
+    """)
+    
+    with engine.connect() as conn:
+        result = conn.execute(query, {'date': date})
+        count = result.scalar()
+    
+    return count > 0
 
 def get_previous_trading_day(current_date):
     query = text(f"""
@@ -72,11 +86,15 @@ def batch_check_volume_increase(date_list):
     for date in date_list:
         try:
             datetime.strptime(date, '%Y-%m-%d')
-            check_and_store_volume_increase(date)
+            # 检查数据是否存在
+            if check_data_exists(date):
+                check_and_store_volume_increase(date)
+            else:
+                print(f"No ETF data found for date: {date}, skipping volume increase check.")
         except ValueError:
             print(f"Incorrect date format for {date}, should be YYYY-MM-DD. Skipping this date.")
 
 if __name__ == "__main__":
     # 示例：批量检查多个日期
-    dates_to_check = ['2024-09-23', '2024-09-24', '2024-09-25', '2024-09-26', '2024-09-27']
+    dates_to_check = ['2024-11-07']
     batch_check_volume_increase(dates_to_check)

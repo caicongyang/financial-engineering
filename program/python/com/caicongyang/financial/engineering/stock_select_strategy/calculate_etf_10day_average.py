@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 # 数据库连接信息
 mysql_user = 'root'
 mysql_password = 'root'
-mysql_host = '159.138.152.92'
+mysql_host = '101.43.6.49'
 mysql_port = '3333'
 mysql_db = 'stock'
 source_table = 't_etf'
@@ -20,6 +20,20 @@ target_table = 't_etf_10day_avg'
 
 # 创建数据库连接
 engine = create_engine(f'mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_db}')
+
+def check_data_exists(date):
+    """检查指定日期的ETF数据是否存在"""
+    query = text(f"""
+    SELECT COUNT(*) 
+    FROM {source_table}
+    WHERE trade_date = :date
+    """)
+    
+    with engine.connect() as conn:
+        result = conn.execute(query, {'date': date})
+        count = result.scalar()
+    
+    return count > 0
 
 def get_last_10_trading_days(end_date):
     query = text(f"""
@@ -77,15 +91,15 @@ def batch_calculate_10day_average(date_list):
     for date in date_list:
         try:
             datetime.strptime(date, '%Y-%m-%d')
-            calculate_and_store_10day_average(date)
+            # 检查数据是否存在
+            if check_data_exists(date):
+                calculate_and_store_10day_average(date)
+            else:
+                print(f"No ETF data found for date: {date}, skipping calculation.")
         except ValueError:
             print(f"Incorrect date format for {date}, should be YYYY-MM-DD. Skipping this date.")
 
 if __name__ == "__main__":
-    # 示例：计算单个日期的10日均值
-    # single_date = '2024-10-23'
-    # calculate_and_store_10day_average(single_date)
-
     # 示例：批量计算多个日期的10日均值
-    dates_to_calculate = ['2024-10-21', '2024-10-22', '2024-10-23', '2024-10-24', '2024-10-25']
+    dates_to_calculate = ['2024-11-07']
     batch_calculate_10day_average(dates_to_calculate)
