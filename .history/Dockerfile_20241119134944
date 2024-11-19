@@ -16,13 +16,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+
 # 复制requirements.txt
 COPY requirements.txt .
 
-# 配置pip使用清华镜像源并安装依赖
-RUN pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple \
-    && pip config set install.trusted-host mirrors.tuna.tsinghua.edu.cn \
-    && pip install -r requirements.txt
+# 安装Python依赖
+RUN pip install -r requirements.txt
 
 # 创建项目目录结构
 RUN mkdir -p /app/program/python/com/caicongyang/financial/engineering/stock_select_strategy
