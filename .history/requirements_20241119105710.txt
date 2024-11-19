@@ -1,0 +1,9 @@
+schedule
+pandas
+numpy
+akshare
+tushare
+requests
+python-dateutil
+sqlalchemy
+pymysql
