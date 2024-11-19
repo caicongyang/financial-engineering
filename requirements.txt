@@ -4,7 +4,7 @@
 akshare==1.14.91
 beautifulsoup4==4.12.3
 bs4==0.0.2
-bzip2==1.0.8
+bzip2
 ca-certificates==2024.8.30
 certifi==2024.8.30
 cffi==1.17.1
