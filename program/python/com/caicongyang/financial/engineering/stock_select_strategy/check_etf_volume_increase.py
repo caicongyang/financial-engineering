@@ -68,7 +68,17 @@ def check_and_store_volume_increase(today):
     with engine.connect() as conn:
         df = pd.read_sql(query, conn, params={'today': today, 'yesterday': yesterday})
 
-    df['volume_increase_ratio'] = df['today_volume'] / df['yesterday_volume']
+    # 处理前一天成交量为0的情况
+    df['volume_increase_ratio'] = df.apply(
+        lambda x: float('inf') if x['yesterday_volume'] == 0 and x['today_volume'] > 0
+        else 0 if x['yesterday_volume'] == 0 and x['today_volume'] == 0
+        else x['today_volume'] / x['yesterday_volume'], 
+        axis=1
+    )
+
+    # 将无穷大值替换为一个较大的数字，比如999999
+    df['volume_increase_ratio'] = df['volume_increase_ratio'].replace([float('inf')], 999999)
+
     df_increased = df[df['volume_increase_ratio'] >= 2].copy()
     df_increased = df_increased[['stock_code', 'stock_name', 'trade_date', 'volume_increase_ratio', 'close', 'open', 'high', 'low']]
     df_increased.columns = ['stock_code', 'stock_name', 'trade_date', 'volume_increase_ratio', 'close', 'open', 'high', 'low']
@@ -96,5 +106,5 @@ def batch_check_volume_increase(date_list):
 
 if __name__ == "__main__":
     # 示例：批量检查多个日期
-    dates_to_check = ['2024-11-07']
+    dates_to_check = ['2024-11-14', '2024-11-15', '2024-11-18', '2024-11-19']
     batch_check_volume_increase(dates_to_check)

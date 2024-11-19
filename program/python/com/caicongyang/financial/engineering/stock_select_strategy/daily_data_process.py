@@ -19,7 +19,9 @@ import calculate_stock_10day_average as stock_avg
 import calculate_etf_10day_average as etf_avg
 import check_volume_increase as stock_volume
 import check_etf_volume_increase as etf_volume
-
+import check_stock_limit as stock_limit
+import inputStockFundFlowRankFromAkShare as fund_flow_rank
+import inputStockFundFlowFromAkShare as fund_flow
 def get_today_date():
     """获取当前日期，格式为YYYY-MM-DD"""
     return datetime.now().strftime('%Y-%m-%d')
@@ -52,6 +54,16 @@ def process_daily_data(date):
         # 6. 检查ETF成交量
         print("\n--- Checking ETF volume increase ---")
         etf_volume.batch_check_volume_increase([date])
+
+        # 7. 检查股票成交量
+        print("\n--- Checking stock limit  ---")
+        stock_limit.batch_check_limit_stocks([date])
+
+        print("\n--- Processing stock fund flow rank data ---")
+        fund_flow_rank.process_fund_flow_rank_data(date)
+
+        print("\n--- Processing stock fund flow data ---")
+        fund_flow.process_fund_flow_data(date)
 
         print(f"\n=== Daily data processing completed for {date} ===\n")
 

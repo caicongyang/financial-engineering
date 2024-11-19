@@ -101,5 +101,5 @@ def batch_calculate_10day_average(date_list):
 
 if __name__ == "__main__":
     # 示例：批量计算多个日期的10日均值
-    dates_to_calculate = ['2024-11-07']
+    dates_to_calculate = ['2024-11-19']
     batch_calculate_10day_average(dates_to_calculate)
