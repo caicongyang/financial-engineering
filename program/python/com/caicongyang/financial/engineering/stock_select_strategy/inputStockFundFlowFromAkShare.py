@@ -9,10 +9,12 @@ from sqlalchemy import create_engine
 import akshare as ak
 import pandas as pd
 from datetime import datetime
-import re
+import numpy as np
 
 # 列多的时候，不隐藏
 pd.set_option('expand_frame_repr', False)
+# 设置未来行为，避免警告
+pd.set_option('future.no_silent_downcasting', True)
 
 # 数据库连接信息
 mysql_user = 'root'
@@ -24,37 +26,15 @@ table_name = 't_stock_fund_flow_tsh'
 
 engine = create_engine(f'mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_db}')
 
-def convert_fund_flow(value):
-    """将资金流入净额转换为数值（单位：元）"""
-    try:
-        if isinstance(value, (int, float)):
-            return float(value)
-        
-        # 移除可能的逗号
-        value = value.replace(',', '')
-        
-        # 处理亿级别
-        if '亿' in value:
-            number = float(value.replace('亿', ''))
-            return number * 100000000
-        
-        # 处理万级别
-        if '万' in value:
-            number = float(value.replace('万', ''))
-            return number * 10000
-        
-        return float(value)
-    except:
-        return 0
+def pad_stock_code(code):
+    """将股票代码补足6位"""
+    return str(code).zfill(6)
 
-def convert_percentage(value):
-    """将百分比字符串转换为数值"""
-    try:
-        if isinstance(value, (int, float)):
-            return float(value)
-        return float(value.strip('%'))
-    except:
-        return 0
+def check_data_exists(date):
+    """检查指定日期的数据是否已存在"""
+    query = f"SELECT COUNT(*) FROM {table_name} WHERE trade_date = '{date}'"
+    result = pd.read_sql(query, engine)
+    return result.iloc[0, 0] > 0
 
 def process_fund_flow_data(date):
     """处理指定日期的资金流数据"""
@@ -62,14 +42,20 @@ def process_fund_flow_data(date):
         # 验证日期格式
         datetime.strptime(date, '%Y-%m-%d')
         
+        # 检查数据是否已存在
+        if check_data_exists(date):
+            print(f"Data for {date} already exists in the database. Skipping...")
+            return
+        
         print(f"Starting to process fund flow data for date: {date}")
         
         # 获取3日排行数据
         df = ak.stock_fund_flow_individual(symbol="3日排行")
-        
-        # 删除'序号'列
+
+        # 删除'序号'列和索引
         df = df.drop(['序号'], axis=1, errors='ignore')
-        
+        df = df.reset_index(drop=True)
+
         # 重命名列
         df = df.rename(columns={
             '股票代码': 'stock_code',
@@ -79,15 +65,18 @@ def process_fund_flow_data(date):
             '连续换手率': 'turnover_rate',
             '资金流入净额': 'fund_flow'
         })
-        
-        # 转换数据类型
-        df['change_rate'] = df['change_rate'].apply(convert_percentage)
-        df['turnover_rate'] = df['turnover_rate'].apply(convert_percentage)
-        df['fund_flow'] = df['fund_flow'].apply(convert_fund_flow)
-        df['price'] = pd.to_numeric(df['price'], errors='coerce')
+
+        # 补足股票代码为6位
+        df['stock_code'] = df['stock_code'].astype(str).apply(pad_stock_code)
         
         # 添加日期列
         df['trade_date'] = pd.to_datetime(date)
+        
+        # 删除包含空值的行
+        df = df.dropna(subset=['price'])
+        
+        # 打印处理后的数据（不显示索引）
+        print(df.to_string(index=False))
         
         # 保存到数据库
         try:
