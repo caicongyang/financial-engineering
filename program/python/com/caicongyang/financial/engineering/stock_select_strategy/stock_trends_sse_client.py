@@ -11,6 +11,10 @@ import json
 import random
 from datetime import datetime
 import logging
+import pandas as pd
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import create_engine  # 保留同步引擎用于 pandas
+from sqlalchemy import text
 
 # 配置日志
 logging.basicConfig(level=logging.INFO,
@@ -65,6 +69,29 @@ class StockTrendsSSEClient:
         
         # 当前使用的服务器索引
         self.current_server_index = 0
+        
+        # 数据库连接信息
+        self.mysql_user = 'root'
+        self.mysql_password = 'root'
+        self.mysql_host = '101.43.6.49'
+        self.mysql_port = '3333'
+        self.mysql_db = 'stock'
+        self.table_name = 't_stock_trends'
+        
+        # 创建同步引擎（用于 pandas）
+        self.engine = create_engine(
+            f'mysql+pymysql://{self.mysql_user}:{self.mysql_password}@{self.mysql_host}:{self.mysql_port}/{self.mysql_db}',
+            pool_size=5,
+            max_overflow=10
+        )
+        
+        # 创建异步引擎
+        self.async_engine = create_async_engine(
+            f'mysql+aiomysql://{self.mysql_user}:{self.mysql_password}@{self.mysql_host}:{self.mysql_port}/{self.mysql_db}'
+        )
+        
+        # 用于跟踪已处理的数据
+        self.processed_records = {}  # 格式: {stock_code: {trade_time: True}}
 
     def get_next_server(self):
         """获取下一个服务器地址"""
@@ -163,6 +190,60 @@ class StockTrendsSSEClient:
             logger.error(f"Connection error for {stock_code}: {e}")
             raise
 
+    async def save_trends_data(self, stock_code, trends_data):
+        """保存trends数据到数据库"""
+        try:
+            # 初始化该股票的记录集
+            if stock_code not in self.processed_records:
+                self.processed_records[stock_code] = set()
+            
+            # 解析trends数据，只处理新数据
+            new_records = []
+            for trend in trends_data:
+                fields = trend.split(',')
+                if len(fields) == 8:
+                    trade_time = fields[0]
+                    # 检查是否已处理过这条记录
+                    if trade_time not in self.processed_records[stock_code]:
+                        record = {
+                            'stock_code': stock_code,
+                            'trade_time': trade_time,
+                            'price': float(fields[1]),
+                            'open': float(fields[2]),
+                            'high': float(fields[3]),
+                            'low': float(fields[4]),
+                            'volume': int(fields[5]),
+                            'amount': float(fields[6]),
+                            'avg_price': float(fields[7])
+                        }
+                        new_records.append(record)
+                        # 添加到已处理集合
+                        self.processed_records[stock_code].add(trade_time)
+
+            if new_records:
+                # 创建DataFrame
+                df = pd.DataFrame(new_records)
+                
+                # 转换时间格式
+                df['trade_time'] = pd.to_datetime(df['trade_time'])
+                
+                # 直接插入新数据
+                await asyncio.get_event_loop().run_in_executor(
+                    None,
+                    lambda: df.to_sql(
+                        self.table_name,
+                        con=self.engine,
+                        if_exists='append',
+                        index=False,
+                        method='multi',
+                        chunksize=500
+                    )
+                )
+                logger.info(f"Successfully saved {len(new_records)} new trends records for stock {stock_code}")
+                
+        except Exception as e:
+            logger.error(f"Error saving trends data for stock {stock_code}: {e}")
+
     async def process_sse_data(self, data):
         """处理 SSE 数据"""
         try:
@@ -171,9 +252,20 @@ class StockTrendsSSEClient:
             
             if data:
                 json_data = json.loads(data)
-                logger.info(f"Received data at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}:")
-                logger.info(json.dumps(json_data, indent=2, ensure_ascii=False))
                 
+                # 检查数据结构和trends数据是否存在
+                if (json_data.get('data') and 
+                    isinstance(json_data['data'], dict) and 
+                    json_data['data'].get('trends')):
+                    
+                    stock_code = json_data['data'].get('code')
+                    trends = json_data['data']['trends']
+                    
+                    # 异步保存trends数据
+                    await self.save_trends_data(stock_code, trends)
+                else:
+                    logger.debug("Received data without trends information")
+                    
         except json.JSONDecodeError as e:
             logger.error(f"Error decoding JSON data: {e}")
             logger.error(f"Raw data: {data}")
