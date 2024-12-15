@@ -98,8 +98,11 @@ def main():
 if __name__ == "__main__":
     # 如果想立即执行一次，可以取消下面的注释
     # today = get_today_date()
+    if is_trading_day("2024-11-20"):
+        process_daily_data("2024-11-22")
+    # today = get_today_date()
     # if is_trading_day(today):
     #     process_daily_data(today)
     
-    # 启动定时任务
-    main()
+    # # 启动定时任务
+    # main()
