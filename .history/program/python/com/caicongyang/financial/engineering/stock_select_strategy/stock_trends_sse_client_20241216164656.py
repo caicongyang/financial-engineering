@@ -4,66 +4,13 @@
 """
 使用 aiohttp 实现东方财富行情 SSE 客户端，数据存储到Redis
 
-Redis数据结构设计：
+Key设计：
+- stock:trends:{stock_code}:latest    # Hash结构，存储最新一条行情
+- stock:trends:{stock_code}:today     # Sorted Set结构，存储当天分时数据
+- stock:trends:active:stocks          # Set结构，存储活跃股票列表
 
-1. 实时行情数据：
-    - stock:trends:{stock_code}:latest (Hash)
-        {
-            'trade_time': '时间',
-            'price': '当前价',
-            'open': '开盘价',
-            'high': '最高价',
-            'low': '最低价',
-            'volume': '成交量',
-            'amount': '成交额',
-            'avg_price': '均价'
-        }
 
-2. 当日分时数据：
-    - stock:trends:{stock_code}:today:{date} (Sorted Set)
-        score: timestamp
-        member: JSON字符串(包含完整行情数据)
 
-3. 活跃股票统计：
-    - stock:trends:active:stocks:{date} (Hash)
-        {
-            'stock_code': '活跃次数',  # 成交量>5万即计数+1
-        }
-
-4. 概念股元数据：
-    - meta:stock:concept:{stock_code} (Hash)
-        {
-            'concept_name': '概念名称',
-            'stock_name': '股票名称'
-        }
-    
-    - meta:concept:stocks:{concept_name} (Hash)
-        {
-            'stock_code': 'stock_name',  # 股票代码: 股票名称
-        }
-    
-    - meta:concepts:all (Set)
-        ['概念1', '概念2', ...]  # 所有概念名称集合
-
-5. 热点板块统计：
-    - hot:concept:stats:{date} (Sorted Set)
-        score: 活跃股票数量
-        member: 概念名称
-
-    - hot:concept:active:stocks:{concept_name}:{date} (Set)
-        members: [stock_code1, stock_code2, ...]  # 该概念下当天的活跃股票集合
-
-数据过期策略：
-- 分时数据和活跃股票统计：次日0点自动过期
-- 概念股元数据：永久保存
-
-使用示例：
-1. 获取股票最新行情：HGETALL stock:trends:000001:latest
-2. 获取分时数据：ZRANGE stock:trends:000001:today:20240318 0 -1
-3. 查询活跃股票：HGETALL stock:trends:active:stocks:20240318
-4. 获取股票概念：HGETALL meta:stock:concept:000001
-5. 获取概念股票：HGETALL meta:concept:stocks:新能源
-6. 获取所有概念：SMEMBERS meta:concepts:all
 """
 
 import aiohttp
@@ -75,8 +22,6 @@ import logging
 import aioredis
 from aioredis import Redis
 import time
-import pandas as pd
-from sqlalchemy import create_engine
 
 # 配置日志
 logging.basicConfig(level=logging.INFO,
@@ -136,22 +81,6 @@ class StockTrendsSSEClient:
         self.retry_delay = 5
         self.heartbeat_interval = 30
         self.last_data_time = None
-        
-        # MySQL配置
-        self.mysql_config = {
-            'host': '101.43.6.49',
-            'port': 3333,
-            'user': 'root',
-            'password': 'root',
-            'db': 'stock'
-        }
-        
-        # 企业微信机器人配置
-        self.webhook_key = "693axxx6-7aoc-4bc4-97a0-0ec2sifa5aaa"
-        self.webhook_url = f"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={self.webhook_key}"
-        
-        # 推送记录（避免重复推送）
-        self.pushed_stocks = set()
 
     async def init_redis(self):
         """初始化Redis连接"""
@@ -201,27 +130,21 @@ class StockTrendsSSEClient:
                     pipe.expireat(today_key, int(tomorrow))
                     
                     # 4. 更新活跃股票逻辑
-                    VOLUME_THRESHOLD = 50000
-                    if volume_int > VOLUME_THRESHOLD:
+                    VOLUME_THRESHOLD = 50000  # 定义阈值常量
+                    if volume_int > VOLUME_THRESHOLD:  # 使用整数比较
                         active_stocks_key = f"stock:trends:active:stocks:{today}"
                         current_count = await self.redis.hget(active_stocks_key, stock_code)
                         
                         if current_count is None:
                             new_count = 1
                         else:
-                            new_count = int(current_count) + 1
+                            new_count = int(current_count) + 1  # 从Redis取出的字符串转回整数
                         
+                        # 存储新的计数（自动转为字符串）
                         pipe.hset(active_stocks_key, stock_code, new_count)
                         logger.info(f"Stock {stock_code} active count: {new_count}, volume: {volume_int}")
                         
-                        # 更新热点板块统计
-                        await self.update_hot_concepts(stock_code)
-                        
-                        # 检查是否需要推送消息（当计数大于3且未推送过）
-                        if new_count >= 3 and stock_code not in self.pushed_stocks:
-                            await self.push_to_wechat(stock_code, new_count, volume_int)
-                            self.pushed_stocks.add(stock_code)  # 标记为已推送
-                        
+                        # 设置活跃股票列表的过期时间
                         pipe.expireat(active_stocks_key, int(tomorrow))
             
             # 执行管道命令
@@ -349,7 +272,7 @@ class StockTrendsSSEClient:
             base_url = self.get_base_url()
             logger.info(f"Using server: {base_url}")
             
-            # 创建心��检测任务
+            # 创建心跳检测任务
             heartbeat_task = asyncio.create_task(self.heartbeat_check(stock_code))
             
             async with aiohttp.ClientSession() as session:
@@ -436,245 +359,11 @@ class StockTrendsSSEClient:
             logger.error(f"Connection error for {stock_code}: {e}")
             raise
 
-    async def init_concept_stocks(self):
-        """初始化概念股数据到Redis"""
-        try:
-            # 创建同步数据库连接
-            engine = create_engine(
-                f"mysql+pymysql://{self.mysql_config['user']}:{self.mysql_config['password']}@"
-                f"{self.mysql_config['host']}:{self.mysql_config['port']}/{self.mysql_config['db']}"
-            )
-
-            # 查询概念股数据
-            query = """
-                SELECT concept_name, stock_code, stock_name 
-                FROM t_concept_stock
-            """
-            
-            df = pd.read_sql(query, engine)
-            
-            # 使用Redis pipeline批量写入数据
-            pipe = self.redis.pipeline()
-            
-            # 1. 存储股票到概念的映射
-            for _, row in df.iterrows():
-                stock_key = f"meta:stock:concept:{row['stock_code']}"
-                concept_data = {
-                    'concept_name': row['concept_name'],
-                    'stock_name': row['stock_name']
-                }
-                pipe.hset(stock_key, mapping=concept_data)
-            
-            # 2. 存储概念到股票的映射
-            for concept_name in df['concept_name'].unique():
-                concept_stocks = df[df['concept_name'] == concept_name]
-                concept_key = f"meta:concept:stocks:{concept_name}"
-                
-                # 使用Hash存储该概念下的所有股票
-                concept_stocks_data = dict(zip(
-                    concept_stocks['stock_code'],
-                    concept_stocks['stock_name']
-                ))
-                pipe.hmset(concept_key, concept_stocks_data)
-            
-            # 3. 存储所有概念名称集合
-            all_concepts_key = "meta:concepts:all"
-            pipe.sadd(all_concepts_key, *df['concept_name'].unique())
-            
-            # 执行所有Redis命令
-            await pipe.execute()
-            
-            logger.info(f"Successfully loaded {len(df)} concept stock records into Redis")
-            
-        except Exception as e:
-            logger.error(f"Error loading concept stocks: {e}")
-            raise
-
-    async def get_stock_concepts(self, stock_code):
-        """获取股票的概念信息"""
-        try:
-            stock_key = f"meta:stock:concept:{stock_code}"
-            concepts = await self.redis.hgetall(stock_key)
-            return concepts
-        except Exception as e:
-            logger.error(f"Error getting concepts for stock {stock_code}: {e}")
-            return {}
-
-    async def get_concept_stocks(self, concept_name):
-        """获取概念下的所有股票"""
-        try:
-            concept_key = f"meta:concept:stocks:{concept_name}"
-            stocks = await self.redis.hgetall(concept_key)
-            return stocks
-        except Exception as e:
-            logger.error(f"Error getting stocks for concept {concept_name}: {e}")
-            return {}
-
-    async def get_all_concepts(self):
-        """获取所有概念名称"""
-        try:
-            return await self.redis.smembers("meta:concepts:all")
-        except Exception as e:
-            logger.error(f"Error getting all concepts: {e}")
-            return set()
-
-    async def update_hot_concepts(self, stock_code: str):
-        """
-        更新热点板块统计
-        每只股票在同一概念中只统计一次，不管触发多少次活跃
-        """
-        try:
-            today = datetime.now().strftime('%Y%m%d')
-            
-            # 获取股票的所有概念
-            concepts = await self.get_stock_concepts(stock_code)
-            if not concepts:
-                return
-            
-            pipe = self.redis.pipeline()
-            
-            # 遍历该股票的所有概念
-            for concept_name in concepts.get('concept_name', '').split(','):
-                if not concept_name:
-                    continue
-                    
-                # 概念活跃股票集合的key
-                concept_active_stocks_key = f"hot:concept:active:stocks:{concept_name}:{today}"
-                
-                # 将股票添加到概念的活跃股票集合中
-                # SADD命令：如果股票已存在，不会重复添加
-                pipe.sadd(concept_active_stocks_key, stock_code)
-                
-                # 设置过期时间
-                tomorrow = (datetime.now().replace(hour=0, minute=0, second=0) + 
-                          timedelta(days=1)).timestamp()
-                pipe.expireat(concept_active_stocks_key, int(tomorrow))
-                
-                # 获取该概念下的活跃股票数量
-                active_count = await self.redis.scard(concept_active_stocks_key)
-                
-                # 更新热点板块排行
-                hot_concepts_key = f"hot:concept:stats:{today}"
-                pipe.zadd(hot_concepts_key, {concept_name: active_count})
-                pipe.expireat(hot_concepts_key, int(tomorrow))
-            
-            await pipe.execute()
-            
-        except Exception as e:
-            logger.error(f"Error updating hot concepts for stock {stock_code}: {e}")
-
-    async def get_hot_concepts(self, limit=10):
-        """
-        获取热点板块排行
-        :param limit: 返回前N个热点板块
-        :return: [(concept_name, active_stocks_count), ...]
-        """
-        try:
-            today = datetime.now().strftime('%Y%m%d')
-            hot_concepts_key = f"hot:concept:stats:{today}"
-            
-            # 获取得分最高的N个概念
-            results = await self.redis.zrevrange(
-                hot_concepts_key, 
-                0, 
-                limit-1, 
-                withscores=True
-            )
-            
-            # 转换格式并返回
-            return [(concept, int(score)) for concept, score in results]
-            
-        except Exception as e:
-            logger.error(f"Error getting hot concepts: {e}")
-            return []
-
-    async def get_concept_active_stocks(self, concept_name):
-        """
-        获取概念下的活跃股票列表
-        """
-        try:
-            today = datetime.now().strftime('%Y%m%d')
-            concept_active_stocks_key = f"hot:concept:active:stocks:{concept_name}:{today}"
-            
-            # 获取该概念下所有活跃股票
-            active_stocks = await self.redis.smembers(concept_active_stocks_key)
-            return list(active_stocks)
-            
-        except Exception as e:
-            logger.error(f"Error getting active stocks for concept {concept_name}: {e}")
-            return []
-
-    async def push_to_wechat(self, stock_code: str, count: int, volume: int):
-        """
-        推送消息到企业微信机器人
-        """
-        try:
-            # 获取股票的概念信息
-            stock_concepts = await self.get_stock_concepts(stock_code)
-            stock_name = stock_concepts.get('stock_name', '未知')
-            concepts = stock_concepts.get('concept_name', '无')
-
-            # 获取当前时间
-            current_time = datetime.now().strftime('%H:%M:%S')
-            
-            # 构建消息内容
-            message = (
-                f"🔥 高活跃度股票提醒 \n"
-                f"时间: {current_time}\n"
-                f"股票: {stock_code} {stock_name}\n"
-                f"活跃次数: {count}\n"
-                f"当前成交量: {volume}\n"
-                f"所属概念: {concepts}\n"
-                f"------------------------\n"
-            )
-
-            # 构建请求数据
-            data = {
-                "msgtype": "text",
-                "text": {
-                    "content": message
-                }
-            }
-
-            # 发送请求
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.webhook_url,
-                    json=data,
-                    headers={'Content-Type': 'application/json'}
-                ) as response:
-                    if response.status == 200:
-                        result = await response.json()
-                        if result.get('errcode') == 0:
-                            logger.info(f"Successfully pushed message for stock {stock_code}")
-                        else:
-                            logger.error(f"Failed to push message: {result}")
-                    else:
-                        logger.error(f"Failed to push message, status code: {response.status}")
-
-        except Exception as e:
-            logger.error(f"Error pushing message to WeChat: {e}")
-
-    # 添加一个方法在每天开始时重置推送记录
-    async def reset_push_records(self):
-        """重置推送记录"""
-        self.pushed_stocks.clear()
-        logger.info("Push records have been reset")
-
 async def main():
+    # 读取股票代码列表
     try:
-        client = StockTrendsSSEClient()
-        
-        # 初始化Redis连接
-        await client.init_redis()
-        
-        # 初始化概念股数据
-        logger.info("Starting to load concept stocks data...")
-        await client.init_concept_stocks()
-        logger.info("Concept stocks data loaded successfully")
-        
-        # 读取股票代码列表
         with open('input.txt', 'r') as f:
+            # 过滤掉空行和注释行，并去除每行的空白字符
             stock_codes = [line.strip() for line in f 
                          if line.strip() and not line.startswith('#')]
         
@@ -684,14 +373,16 @@ async def main():
             
         logger.info(f"Loaded {len(stock_codes)} stock codes from input.txt")
         
-        # 启动行情监控任务
+        client = StockTrendsSSEClient()
+        await client.init_redis()  # 初始化Redis连接
+        
         tasks = [client.connect_with_retry(code) for code in stock_codes]
         await asyncio.gather(*tasks)
         
     except FileNotFoundError:
         logger.error("input.txt not found in current directory")
     except Exception as e:
-        logger.error(f"Error in main: {e}")
+        logger.error(f"Error reading input.txt: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main()) 

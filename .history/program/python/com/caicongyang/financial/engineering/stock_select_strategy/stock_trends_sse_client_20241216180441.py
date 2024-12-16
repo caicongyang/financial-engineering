@@ -39,7 +39,7 @@ Redis数据结构设计：
     
     - meta:concept:stocks:{concept_name} (Hash)
         {
-            'stock_code': 'stock_name',  # 股票代码: 股票名称
+            'stock_code': 'stock_name',  # 股���代码: 股票名称
         }
     
     - meta:concepts:all (Set)
@@ -145,13 +145,6 @@ class StockTrendsSSEClient:
             'password': 'root',
             'db': 'stock'
         }
-        
-        # 企业微信机器人配置
-        self.webhook_key = "693axxx6-7aoc-4bc4-97a0-0ec2sifa5aaa"
-        self.webhook_url = f"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={self.webhook_key}"
-        
-        # 推送记录（避免重复推送）
-        self.pushed_stocks = set()
 
     async def init_redis(self):
         """初始化Redis连接"""
@@ -172,7 +165,7 @@ class StockTrendsSSEClient:
                 fields = trend.split(',')
                 if len(fields) == 8:
                     trade_time = fields[0]
-                    volume_int = int(fields[5])  # 解析为整数用于比较
+                    volume_int = int(fields[5])  # 解���为整数用于比较
                     
                     # 构建数据字典（存储到Redis时用字符串）
                     data = {
@@ -216,11 +209,6 @@ class StockTrendsSSEClient:
                         
                         # 更新热点板块统计
                         await self.update_hot_concepts(stock_code)
-                        
-                        # 检查是否需要推送消息（当计数大于3且未推送过）
-                        if new_count >= 3 and stock_code not in self.pushed_stocks:
-                            await self.push_to_wechat(stock_code, new_count, volume_int)
-                            self.pushed_stocks.add(stock_code)  # 标记为已推送
                         
                         pipe.expireat(active_stocks_key, int(tomorrow))
             
@@ -349,7 +337,7 @@ class StockTrendsSSEClient:
             base_url = self.get_base_url()
             logger.info(f"Using server: {base_url}")
             
-            # 创建心��检测任务
+            # 创建心跳检测任务
             heartbeat_task = asyncio.create_task(self.heartbeat_check(stock_code))
             
             async with aiohttp.ClientSession() as session:
@@ -603,63 +591,6 @@ class StockTrendsSSEClient:
         except Exception as e:
             logger.error(f"Error getting active stocks for concept {concept_name}: {e}")
             return []
-
-    async def push_to_wechat(self, stock_code: str, count: int, volume: int):
-        """
-        推送消息到企业微信机器人
-        """
-        try:
-            # 获取股票的概念信息
-            stock_concepts = await self.get_stock_concepts(stock_code)
-            stock_name = stock_concepts.get('stock_name', '未知')
-            concepts = stock_concepts.get('concept_name', '无')
-
-            # 获取当前时间
-            current_time = datetime.now().strftime('%H:%M:%S')
-            
-            # 构建消息内容
-            message = (
-                f"🔥 高活跃度股票提醒 \n"
-                f"时间: {current_time}\n"
-                f"股票: {stock_code} {stock_name}\n"
-                f"活跃次数: {count}\n"
-                f"当前成交量: {volume}\n"
-                f"所属概念: {concepts}\n"
-                f"------------------------\n"
-            )
-
-            # 构建请求数据
-            data = {
-                "msgtype": "text",
-                "text": {
-                    "content": message
-                }
-            }
-
-            # 发送请求
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.webhook_url,
-                    json=data,
-                    headers={'Content-Type': 'application/json'}
-                ) as response:
-                    if response.status == 200:
-                        result = await response.json()
-                        if result.get('errcode') == 0:
-                            logger.info(f"Successfully pushed message for stock {stock_code}")
-                        else:
-                            logger.error(f"Failed to push message: {result}")
-                    else:
-                        logger.error(f"Failed to push message, status code: {response.status}")
-
-        except Exception as e:
-            logger.error(f"Error pushing message to WeChat: {e}")
-
-    # 添加一个方法在每天开始时重置推送记录
-    async def reset_push_records(self):
-        """重置推送记录"""
-        self.pushed_stocks.clear()
-        logger.info("Push records have been reset")
 
 async def main():
     try:
