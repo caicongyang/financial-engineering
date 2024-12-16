@@ -63,7 +63,7 @@ def analyze_high_volume_stocks(date):
             # 2. 3条记录的涨幅都为正
             # 3. 至少有一条记录的成交量超过30万
             # 4. 成交量最大的那条记录必须满足收盘价大于等于最高价
-            if (len(top_3) == 3 and 
+            if (len(top_3) >= 3 and
                 all(top_3['change_rate'] > 0) and 
                 any(top_3['volume'] > 100000) and
                 top_3.iloc[0]['close'] >= top_3.iloc[0]['high']):  # 只检查第一条记录
@@ -94,5 +94,5 @@ def analyze_high_volume_stocks(date):
 
 if __name__ == "__main__":
     # 示例：分析指定日期的数据
-    date_to_analyze = '2024-12-13'
+    date_to_analyze = '2024-12-16'
     analyze_high_volume_stocks(date_to_analyze) 

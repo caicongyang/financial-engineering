@@ -175,5 +175,5 @@ def process_all_stocks_min_data(date):
 
 if __name__ == "__main__":
     # 示例：处理指定日期所有股票的数据
-    date_to_process = '2024-12-12'
+    date_to_process = '2024-12-16'
     process_all_stocks_min_data(date_to_process) 

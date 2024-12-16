@@ -39,7 +39,7 @@ Redis数据结构设计：
     
     - meta:concept:stocks:{concept_name} (Hash)
         {
-            'stock_code': 'stock_name',  # 股���代码: 股票名称
+            'stock_code': 'stock_name',  # 股票代码: 股票名称
         }
     
     - meta:concepts:all (Set)
@@ -211,8 +211,8 @@ class StockTrendsSSEClient:
                                   timedelta(days=1)).timestamp()
                         pipe.expireat(today_key, int(tomorrow))
                         
-                        # 4. 更新活跃股票逻��
-                        if volume_int > 200000:
+                        # 4. 更新活跃股票逻辑
+                        if volume_int > 100000:
                             active_stocks_key = f"stock:trends:active:stocks:{today}"
                             current_count = await self.redis.hget(active_stocks_key, stock_code)
                             
@@ -356,74 +356,65 @@ class StockTrendsSSEClient:
             
             logger.info(f"Connecting to {base_url} for stock {stock_code}")
             
+            retry_count = 0
+            max_retries = 3  # 最大重试次数
+            
             while True:
                 try:
-                    timeout = aiohttp.ClientTimeout(total=60, connect=10)
+                    timeout = aiohttp.ClientTimeout(total=60, connect=10)  # 设置超时
                     async with aiohttp.ClientSession(timeout=timeout) as session:
                         async with session.get(
                             base_url,
                             params=params,
                             headers=self.headers,
-                            proxy=None,
-                            ssl=False,
-                            timeout=3 * 60 * 60
+                            proxy=None,  # 显式禁用代理
+                            ssl=False,   # 禁用SSL验证
                         ) as response:
                             if response.status != 200:
                                 logger.error(f"Non-200 status code: {response.status} for {stock_code}")
                                 await asyncio.sleep(5)
                                 continue
                             
-                            buffer = ""
-                            async for chunk in response.content:
-                                try:
-                                    chunk_text = chunk.decode('utf-8')
-                                    buffer += chunk_text
-                                    
-                                    # 处理完整的数据块
-                                    while '\n\n' in buffer:
-                                        parts = buffer.split('\n\n', 1)
-                                        data_part = parts[0]
-                                        buffer = parts[1]
+                            try:
+                                async for chunk in response.content.iter_chunked(8192):  # 增加chunk大小
+                                    if not chunk:
+                                        logger.warning(f"Empty chunk received for {stock_code}")
+                                        continue
                                         
-                                        if data_part.startswith('data:'):
-                                            data_part = data_part[5:].strip()
+                                    try:
+                                        chunk_text = chunk.decode('utf-8')
+                                        if chunk_text.strip():
+                                            await self.process_sse_data(chunk_text)
+                                    except UnicodeDecodeError as ude:
+                                        logger.error(f"Unicode decode error for {stock_code}: {ude}")
+                                        continue
                                         
-                                        if data_part and data_part != 'undefined':
-                                            try:
-                                                json_data = json.loads(data_part)
-                                                if json_data.get('data'):
-                                                    if isinstance(json_data['data'], dict) and json_data['data'].get('trends'):
-                                                        trends = json_data['data']['trends']
-                                                        if isinstance(trends, list):
-                                                            await self.save_trends_data(stock_code, trends)
-                                                        else:
-                                                            logger.warning(f"Invalid trends format for {stock_code}")
-                                                    elif json_data['data'] is None:
-                                                        logger.debug(f"Received heartbeat for {stock_code}")
-                                            except json.JSONDecodeError as je:
-                                                logger.error(f"JSON decode error: {je}")
-                                                logger.error(f"Problematic data: {data_part[:200]}...")
-                                    
-                                    # 如果缓冲区太大，清理它
-                                    if len(buffer) > 1024 * 1024:  # 1MB
-                                        logger.warning(f"Buffer too large for {stock_code}, clearing")
-                                        buffer = ""
-                                        
-                                except UnicodeDecodeError as ude:
-                                    logger.error(f"Unicode decode error for {stock_code}: {ude}")
-                                    buffer = ""
-                                    continue
+                            except aiohttp.ClientPayloadError as cpe:
+                                logger.error(f"Payload error for {stock_code}: {cpe}")
+                                retry_count += 1
+                                if retry_count >= max_retries:
+                                    logger.error(f"Max retries reached for {stock_code}, switching server")
+                                    retry_count = 0
+                                    base_url = self.get_base_url()  # 切换服务器
+                                await asyncio.sleep(5)
+                                continue
                                 
-                except aiohttp.ClientPayloadError as cpe:
-                    logger.error(f"Payload error for {stock_code}: {cpe}")
-                    await asyncio.sleep(5)
-                    continue
                 except aiohttp.ClientError as e:
                     logger.error(f"Connection error for {stock_code}: {e}")
+                    retry_count += 1
+                    if retry_count >= max_retries:
+                        logger.error(f"Max retries reached for {stock_code}, switching server")
+                        retry_count = 0
+                        base_url = self.get_base_url()  # 切换服务器
                     await asyncio.sleep(5)
                     continue
                 except asyncio.TimeoutError:
                     logger.error(f"Connection timeout for {stock_code}")
+                    retry_count += 1
+                    if retry_count >= max_retries:
+                        logger.error(f"Max retries reached for {stock_code}, switching server")
+                        retry_count = 0
+                        base_url = self.get_base_url()  # 切换服务器
                     await asyncio.sleep(5)
                     continue
                     

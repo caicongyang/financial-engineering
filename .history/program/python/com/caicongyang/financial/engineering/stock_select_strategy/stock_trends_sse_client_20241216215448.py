@@ -212,7 +212,7 @@ class StockTrendsSSEClient:
                         pipe.expireat(today_key, int(tomorrow))
                         
                         # 4. 更新活跃股票逻��
-                        if volume_int > 200000:
+                        if volume_int > 100000:
                             active_stocks_key = f"stock:trends:active:stocks:{today}"
                             current_count = await self.redis.hget(active_stocks_key, stock_code)
                             
@@ -365,8 +365,7 @@ class StockTrendsSSEClient:
                             params=params,
                             headers=self.headers,
                             proxy=None,
-                            ssl=False,
-                            timeout=3 * 60 * 60
+                            ssl=False
                         ) as response:
                             if response.status != 200:
                                 logger.error(f"Non-200 status code: {response.status} for {stock_code}")
