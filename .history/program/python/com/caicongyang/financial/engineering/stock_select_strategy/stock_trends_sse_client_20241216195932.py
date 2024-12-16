@@ -39,7 +39,7 @@ Redis数据结构设计：
     
     - meta:concept:stocks:{concept_name} (Hash)
         {
-            'stock_code': 'stock_name',  # 股票代码: 股票名称
+            'stock_code': 'stock_name',  # 股���代码: 股票名称
         }
     
     - meta:concepts:all (Set)
@@ -78,10 +78,8 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 # 配置日志
-logging.basicConfig(
-    level=logging.INFO,  # 改为 DEBUG 级别
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO,
+                   format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class StockTrendsSSEClient:
@@ -148,7 +146,7 @@ class StockTrendsSSEClient:
         }
         
         # 企业微信机器人配置
-        self.webhook_key = "d981e07d-264c-45b3-949b-fb42f9019751"
+        self.webhook_key = "693axxx6-7aoc-4bc4-97a0-0ec2sifa5aaa"
         self.webhook_url = f"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={self.webhook_key}"
         
         # 推送记录（避免重复推送）
@@ -173,63 +171,65 @@ class StockTrendsSSEClient:
             pipe = self.redis.pipeline()
             
             for trend in trends_data:
-                try:
-                    fields = trend.split(',')
-                    if len(fields) == 8:
-                        # 修复时间格式解析
-                        trade_time = fields[0].split()[-1]  # 只取时间部分 "HH:MM:SS"
-                        trade_time = trade_time.replace(':', '')  # 转换为 "HHMMSS" 格式
-                        volume_int = int(fields[5])
+                fields = trend.split(',')
+                if len(fields) == 8:
+                    trade_time = fields[0]
+                    volume_int = int(fields[5])  # 解析为整数用于比较
+                    
+                    # 构建数据字典（存储到Redis时用字符串）
+                    data = {
+                        'trade_time': trade_time,
+                        'price': fields[1],
+                        'open': fields[2],
+                        'high': fields[3],
+                        'low': fields[4],
+                        'volume': str(volume_int),  # 转为字符串存储到Redis
+                        'amount': fields[6],
+                        'avg_price': fields[7]
+                    }
+                    
+                    # 1. 更新最新行情 (Hash结构)
+                    latest_key = f"stock:trends:{stock_code}:latest"
+                    pipe.hmset(latest_key, data)
+                    
+                    # 2. 添加到当天的分时数据 (Sorted Set结构)
+                    today_key = f"stock:trends:{stock_code}:today:{today}"
+                    score = int(time.mktime(datetime.strptime(trade_time, '%H%M%S').timetuple()))
+                    pipe.zadd(today_key, {json.dumps(data): score})
+                    
+                    # 3. 设置过期时间（次日0点过期）
+                    tomorrow = (datetime.now().replace(hour=0, minute=0, second=0) + 
+                              timedelta(days=1)).timestamp()
+                    pipe.expireat(today_key, int(tomorrow))
+                    
+                    # 4. 更新活跃股票逻辑
+                    VOLUME_THRESHOLD = 50000
+                    if volume_int > VOLUME_THRESHOLD:
+                        active_stocks_key = f"stock:trends:active:stocks:{today}"
+                        current_count = await self.redis.hget(active_stocks_key, stock_code)
                         
-                        # 构建数据字典
-                        data = {
-                            'trade_time': trade_time,
-                            'price': fields[1],
-                            'open': fields[2],
-                            'high': fields[3],
-                            'low': fields[4],
-                            'volume': str(volume_int),
-                            'amount': fields[6],
-                            'avg_price': fields[7]
-                        }
+                        if current_count is None:
+                            new_count = 1
+                        else:
+                            new_count = int(current_count) + 1
                         
-                        # 1. 更新最新行情 (使用hset替代hmset)
-                        latest_key = f"stock:trends:{stock_code}:latest"
-                        pipe.hset(latest_key, mapping=data)  # 使用hset with mapping
+                        pipe.hset(active_stocks_key, stock_code, new_count)
+                        logger.info(f"Stock {stock_code} active count: {new_count}, volume: {volume_int}")
                         
-                        # 2. 添加到当天的分时数据
-                        today_key = f"stock:trends:{stock_code}:today:{today}"
-                        score = int(time.mktime(datetime.strptime(trade_time, '%H%M%S').timetuple()))
-                        pipe.zadd(today_key, {json.dumps(data): score})
+                        # 更新热点板块统计
+                        await self.update_hot_concepts(stock_code)
                         
-                        # 3. 设置过期时间
-                        tomorrow = (datetime.now().replace(hour=0, minute=0, second=0) + 
-                                  timedelta(days=1)).timestamp()
-                        pipe.expireat(today_key, int(tomorrow))
+                        # 检查是否需要推送消息（当计数大于3且未推送过）
+                        if new_count >= 3 and stock_code not in self.pushed_stocks:
+                            await self.push_to_wechat(stock_code, new_count, volume_int)
+                            self.pushed_stocks.add(stock_code)  # 标记为已推送
                         
-                        # 4. 更新活跃股票逻辑
-                        if volume_int > 100000:
-                            active_stocks_key = f"stock:trends:active:stocks:{today}"
-                            current_count = await self.redis.hget(active_stocks_key, stock_code)
-                            
-                            new_count = 1 if current_count is None else int(current_count) + 1
-                            pipe.hset(active_stocks_key, stock_code, new_count)
-                            logger.debug(f"Stock {stock_code} active count: {new_count}, volume: {volume_int}")
-                            
-                            await self.update_hot_concepts(stock_code)
-                            
-                            if new_count >= 3 and stock_code not in self.pushed_stocks:
-                                await self.push_to_wechat(stock_code, new_count, volume_int)
-                                self.pushed_stocks.add(stock_code)
-                            
-                            pipe.expireat(active_stocks_key, int(tomorrow))
-                
-                except ValueError as ve:
-                    logger.error(f"Error processing trend data: {ve}, data: {trend}")
-                    continue
+                        pipe.expireat(active_stocks_key, int(tomorrow))
             
+            # 执行管道命令
             await pipe.execute()
-            # logger.debug(f"Successfully saved trends data for stock {stock_code}")
+            
+            logger.info(f"Successfully saved trends data for stock {stock_code}")
             
         except Exception as e:
             logger.error(f"Error saving trends data for stock {stock_code}: {e}")
@@ -237,7 +237,7 @@ class StockTrendsSSEClient:
     async def get_active_stocks(self, min_count=2):
         """
         获取活跃股票列表
-        :param min_count: 最小活跃次数，默认为2表示至少两次成交于5万
+        :param min_count: 最小活跃次数，默认为2表示至少两次成交��于5万
         :return: 字典，包含股票代码和其活跃次数
         """
         try:
@@ -282,7 +282,7 @@ class StockTrendsSSEClient:
                         trends = json_data['data']['trends']
                         
                         if isinstance(trends, list):
-                            logger.debug(f"Processing {len(trends)} trends for stock {stock_code}")
+                            logger.info(f"Processing {len(trends)} trends for stock {stock_code}")
                             await self.save_trends_data(stock_code, trends)
                         else:
                             logger.warning(f"Invalid trends format for stock {stock_code}")
@@ -311,9 +311,9 @@ class StockTrendsSSEClient:
 
     def get_secid(self, stock_code):
         """生成 secid"""
-        if stock_code.startswith(('300', '301','00')):
+        if stock_code.startswith(('000', '002', '300', '301')):
             return f"0.{stock_code}"
-        elif stock_code.startswith(('60', '688')):
+        elif stock_code.startswith(('600', '601', '603', '688')):
             return f"1.{stock_code}"
         else:
             raise ValueError(f"Unsupported stock code format: {stock_code}")
@@ -368,78 +368,62 @@ class StockTrendsSSEClient:
                             base_url,
                             params=params,
                             headers=self.headers,
-                            timeout=3*60*60
+                            timeout=30
                         ) as response:
-                            # logger.info(f"Connected to SSE stream for stock {stock_code}, status: {response.status}")
+                            logger.info(f"Connected to SSE stream for stock {stock_code}, status: {response.status}")
                             
                             if response.status != 200:
                                 logger.error(f"Non-200 status code: {response.status}")
                                 await asyncio.sleep(5)
                                 continue
                             
+                            # 用于存储完整的JSON数据
                             buffer = ""
+                            incomplete_json = False
                             
                             async for chunk in response.content:
                                 try:
                                     chunk_text = chunk.decode('utf-8')
-                                    logger.debug(f"Raw chunk received for {stock_code}: {chunk_text}")
+                                    buffer += chunk_text
                                     
-                                    # 检查换行符
-                                    if '\n\n' in chunk_text:
-                                        logger.debug(f"Found double newline in chunk for {stock_code}")
-                                        chunks = chunk_text.split('\n\n')
-                                    else:
-                                        chunks = [chunk_text]
-                                    
-                                    for chunk_part in chunks:
-                                        if not chunk_part.strip():
-                                            continue
+                                    # 确保我们有一个完整的JSON对象
+                                    if buffer.count('{') == buffer.count('}') and buffer.strip():
+                                        try:
+                                            # 处理可能的data:前缀
+                                            if buffer.startswith('data:'):
+                                                buffer = buffer[5:].strip()
                                             
-                                        buffer += chunk_part
-                                        logger.debug(f"Current buffer for {stock_code}: {buffer}")
-                                        
-                                        if buffer.strip():
-                                            try:
-                                                # 处理可能的data:前缀
-                                                if buffer.startswith('data:'):
-                                                    buffer = buffer[5:].strip()
-                                                    logger.debug(f"Stripped data prefix, buffer now: {buffer}")
-                                                
-                                                # 尝试解析JSON
-                                                if buffer and buffer != 'undefined':
-                                                    try:
-                                                        json_data = json.loads(buffer)
-                                                        logger.debug(f"Successfully parsed JSON for {stock_code}: {json.dumps(json_data)[:200]}")
-                                                        
-                                                        # 处理数据
-                                                        if json_data.get('data'):
-                                                            if isinstance(json_data['data'], dict) and json_data['data'].get('trends'):
-                                                                trends = json_data['data']['trends']
-                                                                if isinstance(trends, list):
-                                                                    await self.save_trends_data(stock_code, trends)
-                                                                else:
-                                                                    logger.warning(f"Invalid trends format for {stock_code}: {trends}")
-                                                            elif json_data['data'] is None:
-                                                                logger.debug(f"Received heartbeat for {stock_code}")
-                                                            else:
-                                                                logger.warning(f"Unexpected data format for {stock_code}: {json_data}")
-                                                    except json.JSONDecodeError as je:
-                                                        logger.error(f"JSON decode error for {stock_code}: {je}")
-                                                        logger.error(f"Problematic buffer content: {buffer}")
-                                                        logger.error(f"Buffer length: {len(buffer)}")
-                                                        logger.error(f"Buffer characters: {[ord(c) for c in buffer[:20]]}")
-                                                
-                                                # 清空buffer
-                                                buffer = ""
-                                                
-                                            except Exception as e:
-                                                logger.error(f"Error processing buffer for {stock_code}: {e}")
-                                                logger.error(f"Buffer content: {buffer}")
+                                            # 尝试解析JSON
+                                            json_data = json.loads(buffer)
+                                            
+                                            # 处理数据
+                                            if json_data.get('data'):
+                                                if isinstance(json_data['data'], dict) and json_data['data'].get('trends'):
+                                                    trends = json_data['data']['trends']
+                                                    if isinstance(trends, list):
+                                                        await self.save_trends_data(stock_code, trends)
+                                                    else:
+                                                        logger.warning(f"Invalid trends format for {stock_code}")
+                                                elif json_data['data'] is None:
+                                                    # 这是正常的心跳响应
+                                                    logger.debug(f"Received heartbeat for {stock_code}")
+                                                else:
+                                                    logger.warning(f"Unexpected data format for {stock_code}")
+                                            
+                                            # 重置buffer
+                                            buffer = ""
+                                            incomplete_json = False
+                                            
+                                        except json.JSONDecodeError as je:
+                                            if "Expecting ',' delimiter" in str(je):
+                                                incomplete_json = True
+                                                continue
+                                            else:
+                                                logger.error(f"JSON decode error for {stock_code}: {je}")
                                                 buffer = ""
                                                 
                                 except UnicodeDecodeError as ude:
                                     logger.error(f"Unicode decode error for {stock_code}: {ude}")
-                                    logger.error(f"Raw chunk: {chunk}")
                                     buffer = ""
                                     continue
                                     
@@ -454,19 +438,26 @@ class StockTrendsSSEClient:
                         
         except Exception as e:
             logger.error(f"Connection error for {stock_code}: {e}")
-            logger.error(f"Full traceback: ", exc_info=True)
             raise
 
     async def init_concept_stocks(self):
         """初始化概念股数据到Redis"""
         try:
+            # 创建同步数据库连接
             engine = create_engine(
                 f"mysql+pymysql://{self.mysql_config['user']}:{self.mysql_config['password']}@"
                 f"{self.mysql_config['host']}:{self.mysql_config['port']}/{self.mysql_config['db']}"
             )
 
-            df = pd.read_sql("SELECT concept_name, stock_code, stock_name FROM t_concept_stock", engine)
+            # 查询概念股数据
+            query = """
+                SELECT concept_name, stock_code, stock_name 
+                FROM t_concept_stock
+            """
             
+            df = pd.read_sql(query, engine)
+            
+            # 使用Redis pipeline批量写入数据
             pipe = self.redis.pipeline()
             
             # 1. 存储股票到概念的映射
@@ -476,25 +467,28 @@ class StockTrendsSSEClient:
                     'concept_name': row['concept_name'],
                     'stock_name': row['stock_name']
                 }
-                pipe.hset(stock_key, mapping=concept_data)  # 使用hset with mapping
+                pipe.hset(stock_key, mapping=concept_data)
             
             # 2. 存储概念到股票的映射
             for concept_name in df['concept_name'].unique():
                 concept_stocks = df[df['concept_name'] == concept_name]
                 concept_key = f"meta:concept:stocks:{concept_name}"
                 
+                # 使用Hash存储该概念下的所有股票
                 concept_stocks_data = dict(zip(
                     concept_stocks['stock_code'],
                     concept_stocks['stock_name']
                 ))
-                pipe.hset(concept_key, mapping=concept_stocks_data)  # 使用hset with mapping
+                pipe.hmset(concept_key, concept_stocks_data)
             
             # 3. 存储所有概念名称集合
             all_concepts_key = "meta:concepts:all"
             pipe.sadd(all_concepts_key, *df['concept_name'].unique())
             
+            # 执行所有Redis命令
             await pipe.execute()
-            logger.debug(f"Successfully loaded {len(df)} concept stock records into Redis")
+            
+            logger.info(f"Successfully loaded {len(df)} concept stock records into Redis")
             
         except Exception as e:
             logger.error(f"Error loading concept stocks: {e}")
@@ -575,7 +569,7 @@ class StockTrendsSSEClient:
 
     async def get_hot_concepts(self, limit=10):
         """
-        获取热点板块排行
+        获取热点���块排行
         :param limit: 返回前N个热点板块
         :return: [(concept_name, active_stocks_count), ...]
         """
@@ -656,7 +650,7 @@ class StockTrendsSSEClient:
                     if response.status == 200:
                         result = await response.json()
                         if result.get('errcode') == 0:
-                            logger.debug(f"Successfully pushed message for stock {stock_code}")
+                            logger.info(f"Successfully pushed message for stock {stock_code}")
                         else:
                             logger.error(f"Failed to push message: {result}")
                     else:
@@ -669,7 +663,7 @@ class StockTrendsSSEClient:
     async def reset_push_records(self):
         """重置推送记录"""
         self.pushed_stocks.clear()
-        logger.debug("Push records have been reset")
+        logger.info("Push records have been reset")
 
 async def main():
     try:
@@ -679,11 +673,11 @@ async def main():
         await client.init_redis()
         
         # 初始化概念股数据
-        logger.debug("Starting to load concept stocks data...")
+        logger.info("Starting to load concept stocks data...")
         await client.init_concept_stocks()
-        logger.debug("Concept stocks data loaded successfully")
+        logger.info("Concept stocks data loaded successfully")
         
-        # 读取股票代码列表
+        # 读���股票代码列表
         with open('input.txt', 'r') as f:
             stock_codes = [line.strip() for line in f 
                          if line.strip() and not line.startswith('#')]
@@ -692,7 +686,7 @@ async def main():
             logger.error("No stock codes found in input.txt")
             return
             
-        logger.debug(f"Loaded {len(stock_codes)} stock codes from input.txt")
+        logger.info(f"Loaded {len(stock_codes)} stock codes from input.txt")
         
         # 启动行情监控任务
         tasks = [client.connect_with_retry(code) for code in stock_codes]

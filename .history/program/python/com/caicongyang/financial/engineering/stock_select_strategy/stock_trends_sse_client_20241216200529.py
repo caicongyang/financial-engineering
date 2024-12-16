@@ -79,7 +79,7 @@ from sqlalchemy import create_engine
 
 # 配置日志
 logging.basicConfig(
-    level=logging.INFO,  # 改为 DEBUG 级别
+    level=logging.DEBUG,  # 改为 DEBUG 级别
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -148,7 +148,7 @@ class StockTrendsSSEClient:
         }
         
         # 企业微信机器人配置
-        self.webhook_key = "d981e07d-264c-45b3-949b-fb42f9019751"
+        self.webhook_key = "693axxx6-7aoc-4bc4-97a0-0ec2sifa5aaa"
         self.webhook_url = f"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={self.webhook_key}"
         
         # 推送记录（避免重复推送）
@@ -208,13 +208,13 @@ class StockTrendsSSEClient:
                         pipe.expireat(today_key, int(tomorrow))
                         
                         # 4. 更新活跃股票逻辑
-                        if volume_int > 100000:
+                        if volume_int > 50000:
                             active_stocks_key = f"stock:trends:active:stocks:{today}"
                             current_count = await self.redis.hget(active_stocks_key, stock_code)
                             
                             new_count = 1 if current_count is None else int(current_count) + 1
                             pipe.hset(active_stocks_key, stock_code, new_count)
-                            logger.debug(f"Stock {stock_code} active count: {new_count}, volume: {volume_int}")
+                            logger.info(f"Stock {stock_code} active count: {new_count}, volume: {volume_int}")
                             
                             await self.update_hot_concepts(stock_code)
                             
@@ -229,7 +229,7 @@ class StockTrendsSSEClient:
                     continue
             
             await pipe.execute()
-            # logger.debug(f"Successfully saved trends data for stock {stock_code}")
+            logger.info(f"Successfully saved trends data for stock {stock_code}")
             
         except Exception as e:
             logger.error(f"Error saving trends data for stock {stock_code}: {e}")
@@ -282,7 +282,7 @@ class StockTrendsSSEClient:
                         trends = json_data['data']['trends']
                         
                         if isinstance(trends, list):
-                            logger.debug(f"Processing {len(trends)} trends for stock {stock_code}")
+                            logger.info(f"Processing {len(trends)} trends for stock {stock_code}")
                             await self.save_trends_data(stock_code, trends)
                         else:
                             logger.warning(f"Invalid trends format for stock {stock_code}")
@@ -311,9 +311,9 @@ class StockTrendsSSEClient:
 
     def get_secid(self, stock_code):
         """生成 secid"""
-        if stock_code.startswith(('300', '301','00')):
+        if stock_code.startswith(('000', '002', '300', '301')):
             return f"0.{stock_code}"
-        elif stock_code.startswith(('60', '688')):
+        elif stock_code.startswith(('600', '601', '603', '688')):
             return f"1.{stock_code}"
         else:
             raise ValueError(f"Unsupported stock code format: {stock_code}")
@@ -368,9 +368,9 @@ class StockTrendsSSEClient:
                             base_url,
                             params=params,
                             headers=self.headers,
-                            timeout=3*60*60
+                            timeout=30
                         ) as response:
-                            # logger.info(f"Connected to SSE stream for stock {stock_code}, status: {response.status}")
+                            logger.info(f"Connected to SSE stream for stock {stock_code}, status: {response.status}")
                             
                             if response.status != 200:
                                 logger.error(f"Non-200 status code: {response.status}")
@@ -494,7 +494,7 @@ class StockTrendsSSEClient:
             pipe.sadd(all_concepts_key, *df['concept_name'].unique())
             
             await pipe.execute()
-            logger.debug(f"Successfully loaded {len(df)} concept stock records into Redis")
+            logger.info(f"Successfully loaded {len(df)} concept stock records into Redis")
             
         except Exception as e:
             logger.error(f"Error loading concept stocks: {e}")
@@ -656,7 +656,7 @@ class StockTrendsSSEClient:
                     if response.status == 200:
                         result = await response.json()
                         if result.get('errcode') == 0:
-                            logger.debug(f"Successfully pushed message for stock {stock_code}")
+                            logger.info(f"Successfully pushed message for stock {stock_code}")
                         else:
                             logger.error(f"Failed to push message: {result}")
                     else:
@@ -669,7 +669,7 @@ class StockTrendsSSEClient:
     async def reset_push_records(self):
         """重置推送记录"""
         self.pushed_stocks.clear()
-        logger.debug("Push records have been reset")
+        logger.info("Push records have been reset")
 
 async def main():
     try:
@@ -679,9 +679,9 @@ async def main():
         await client.init_redis()
         
         # 初始化概念股数据
-        logger.debug("Starting to load concept stocks data...")
+        logger.info("Starting to load concept stocks data...")
         await client.init_concept_stocks()
-        logger.debug("Concept stocks data loaded successfully")
+        logger.info("Concept stocks data loaded successfully")
         
         # 读取股票代码列表
         with open('input.txt', 'r') as f:
@@ -692,7 +692,7 @@ async def main():
             logger.error("No stock codes found in input.txt")
             return
             
-        logger.debug(f"Loaded {len(stock_codes)} stock codes from input.txt")
+        logger.info(f"Loaded {len(stock_codes)} stock codes from input.txt")
         
         # 启动行情监控任务
         tasks = [client.connect_with_retry(code) for code in stock_codes]

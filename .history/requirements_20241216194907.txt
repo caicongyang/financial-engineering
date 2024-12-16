@@ -1,6 +1,6 @@
 # 数据获取和处理
 akshare==1.14.91
-numpy==1.26.2
+numpy==2.1.1
 pandas==2.2.3
 tushare==1.4.13
 
