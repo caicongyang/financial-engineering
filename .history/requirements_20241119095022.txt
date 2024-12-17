@@ -1,7 +1,0 @@
-schedule
-pandas
-numpy
-akshare
-tushare
-requests
-python-dateutil
