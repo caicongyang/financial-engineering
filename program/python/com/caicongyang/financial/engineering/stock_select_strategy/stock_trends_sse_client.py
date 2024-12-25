@@ -684,9 +684,9 @@ async def main():
         await client.init_redis()
         
         # 初始化概念股数据
-        logger.debug("Starting to load concept stocks data...")
+        logger.info("Starting to load concept stocks data...")
         await client.init_concept_stocks()
-        logger.debug("Concept stocks data loaded successfully")
+        logger.info("Concept stocks data loaded successfully")
         
         # 读取股票代码列表
         with open('input.txt', 'r') as f:

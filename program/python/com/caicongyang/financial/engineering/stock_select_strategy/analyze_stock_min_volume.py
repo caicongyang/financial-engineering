@@ -92,7 +92,109 @@ def analyze_high_volume_stocks(date):
     except Exception as e:
         print(f"An error occurred while analyzing data: {e}")
 
+def analyze_continuous_volume_trend(start_date, end_date):
+    """
+    分析指定日期范围内的成交量趋势
+    条件：
+    1. 获取每天top3的成交量记录
+    2. 统计两天内top3记录（共6条）中上涨的比例
+    3. 成交量大于3万
+    4. 上涨比例大于80%
+    """
+    try:
+        print(f"Analyzing volume trend from {start_date} to {end_date}")
+        
+        # 获取分钟级数据
+        query = text("""
+        SELECT t1.*, t2.stock_name, t2.pct_chg as daily_pct_chg
+        FROM t_stock_min_trade t1
+        JOIN t_stock t2 ON t1.stock_code = t2.stock_code AND t1.trade_date = t2.trade_date
+        WHERE t1.trade_date BETWEEN :start_date AND :end_date
+        AND t1.volume > 30000  -- 只选择成交量大于3万的记录
+        ORDER BY t1.trade_date, t1.stock_code, t1.volume DESC
+        """)
+        
+        # 读取数据
+        with engine.connect() as conn:
+            df = pd.read_sql(query, conn, params={
+                'start_date': start_date,
+                'end_date': end_date
+            })
+        
+        if df.empty:
+            print(f"No records found between {start_date} and {end_date}")
+            return
+        
+        # 按股票和日期分组，获取每天的top4记录
+        result_stocks = []
+        for stock_code, stock_group in df.groupby('stock_code'):
+            dates = sorted(stock_group['trade_date'].unique())
+            if len(dates) < 2:  # 需要两天的数据
+                continue
+                
+            # 获取每天的top4记录
+            daily_tops = []
+            for date in dates:
+                day_data = stock_group[stock_group['trade_date'] == date]
+                top_3 = day_data.nlargest(3, 'volume')
+                if len(top_3) == 4:  # 确保有4条记录
+                    daily_tops.append(top_3)
+            
+            if len(daily_tops) < 2:  # 确保有两天的数据
+                continue
+            
+            # 合并两天的数据
+            combined_data = pd.concat(daily_tops)
+            
+            # 获取两天内的top3记录（共6条）
+            top_6 = combined_data.nlargest(6, 'volume')
+            if len(top_6) < 6:
+                continue
+            
+            # 计算上涨比例
+            up_count = sum(top_6['change_rate'] > 0)
+            up_ratio = up_count / 6
+            
+            # 如果上涨比例大于80%，添加到结果中
+            if up_ratio >= 0.8:
+                result_stocks.append({
+                    'stock_code': stock_code,
+                    'stock_name': stock_group['stock_name'].iloc[0],
+                    'up_ratio': up_ratio,
+                    'data': top_6
+                })
+        
+        # 打印结果
+        if result_stocks:
+            print(f"\n找到 {len(result_stocks)} 只满足条件的股票:")
+            for stock in result_stocks:
+                print("\n" + "="*60)
+                print(f"股票: {stock['stock_code']} - {stock['stock_name']}")
+                print(f"上涨比例: {stock['up_ratio']*100:.2f}%")
+                print("\n大单记录:")
+                display_df = stock['data'][['trade_date', 'trade_time', 'volume', 'change_rate']].copy()
+                display_df['volume'] = display_df['volume'].apply(lambda x: f"{x/10000:.2f}万")
+                display_df['change_rate'] = display_df['change_rate'].apply(lambda x: f"{x:.2f}%")
+                print(display_df.to_string(index=False))
+        else:
+            print("没有找到满足条件的股票")
+            
+    except ValueError as ve:
+        print(f"日期格式错误: {ve}")
+    except Exception as e:
+        print(f"分析数据时发生错误: {e}")
+
 if __name__ == "__main__":
     # 示例：分析指定日期的数据
     date_to_analyze = '2024-12-16'
     analyze_high_volume_stocks(date_to_analyze) 
+    
+    # 新增连续两天的分析
+    print("\n" + "="*80)
+    print("分析连续两天的成交量趋势")
+    print("="*80)
+    
+    # 分析最近两天的数据
+    end_date = '2024-12-16'
+    start_date = '2024-12-15'
+    analyze_continuous_volume_trend(start_date, end_date) 
