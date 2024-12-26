@@ -141,7 +141,7 @@ class LimitUpConceptAnalyzer:
 def main():
     try:
         # 要分析的日期列表
-        dates_to_check = ['2024-03-18']
+        dates_to_check = ['2024-12-26']
         
         analyzer = LimitUpConceptAnalyzer()
         

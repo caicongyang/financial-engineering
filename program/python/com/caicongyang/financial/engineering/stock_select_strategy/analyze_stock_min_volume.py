@@ -64,7 +64,7 @@ def analyze_high_volume_stocks(date):
             # 3. 至少有一条记录的成交量超过30万
             # 4. 成交量最大的那条记录必须满足收盘价大于等于最高价
             if (len(top_3) >= 3 and
-                all(top_3['change_rate'] > 0) and 
+                any(top_3['change_rate'] > 0) and
                 any(top_3['volume'] > 100000) and
                 top_3.iloc[0]['close'] >= top_3.iloc[0]['high']):  # 只检查第一条记录
                 result_dfs.append(top_3)
@@ -137,7 +137,7 @@ def analyze_continuous_volume_trend(start_date, end_date):
             for date in dates:
                 day_data = stock_group[stock_group['trade_date'] == date]
                 top_3 = day_data.nlargest(3, 'volume')
-                if len(top_3) == 4:  # 确保有4条记录
+                if len(top_3) == 3:  # 确保有4条记录
                     daily_tops.append(top_3)
             
             if len(daily_tops) < 2:  # 确保有两天的数据
@@ -186,7 +186,7 @@ def analyze_continuous_volume_trend(start_date, end_date):
 
 if __name__ == "__main__":
     # 示例：分析指定日期的数据
-    date_to_analyze = '2024-12-16'
+    date_to_analyze = '2024-12-26'
     analyze_high_volume_stocks(date_to_analyze) 
     
     # 新增连续两天的分析
@@ -195,6 +195,6 @@ if __name__ == "__main__":
     print("="*80)
     
     # 分析最近两天的数据
-    end_date = '2024-12-16'
-    start_date = '2024-12-15'
+    end_date = '2024-12-25'
+    start_date = '2024-12-26'
     analyze_continuous_volume_trend(start_date, end_date) 

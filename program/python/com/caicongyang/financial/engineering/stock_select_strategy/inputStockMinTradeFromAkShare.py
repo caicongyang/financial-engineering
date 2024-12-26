@@ -151,7 +151,7 @@ def process_all_stocks_min_data(date):
     
     # 使用线程池处理数据
     start_time = time.time()
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    with ThreadPoolExecutor(max_workers=10) as executor:
         # 创建所有任务
         future_to_stock = {
             executor.submit(process_stock_min_data, stock_code, date): stock_code 
@@ -175,5 +175,5 @@ def process_all_stocks_min_data(date):
 
 if __name__ == "__main__":
     # 示例：处理指定日期所有股票的数据
-    date_to_process = '2024-12-16'
+    date_to_process = '2024-12-25'
     process_all_stocks_min_data(date_to_process) 

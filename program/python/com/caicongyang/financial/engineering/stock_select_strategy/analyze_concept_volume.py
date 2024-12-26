@@ -141,7 +141,7 @@ class ConceptVolumeAnalyzer:
                 FROM t_volume_increase v
                 JOIN t_concept_stock c ON v.stock_code = c.stock_code
                 WHERE v.trade_date = :date
-                AND v.close > v.open  -- 只统计收盘价大于开盘价的股票
+                AND v.close >= v.open  -- 只统计收盘价大于开盘价的股票
             """)
             
             df = pd.read_sql(query, self.engine, params={'date': date})
@@ -251,7 +251,7 @@ class ConceptVolumeAnalyzer:
 def main():
     try:
         # 要分析的日期列表
-        dates_to_check = ['2024-03-18', '2024-03-19']
+        dates_to_check = ['2024-12-26']
         
         analyzer = ConceptVolumeAnalyzer()
         analyzer.batch_analyze_concepts(dates_to_check)
