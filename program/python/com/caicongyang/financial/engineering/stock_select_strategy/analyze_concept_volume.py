@@ -61,6 +61,9 @@ class ConceptVolumeAnalyzer:
                     logger.warning(f"No stock data found for date: {analyze_date}, skipping concept analysis.")
                     continue
                 
+                # 清空当天的数据
+                self.clear_existing_data(analyze_date)
+                
                 logger.info(f"开始分析 {analyze_date} 的概念股数据...")
                 
                 # 分析数据
@@ -79,7 +82,7 @@ class ConceptVolumeAnalyzer:
                     # 打印结果
                     self.print_analysis_results(analyze_date, hot_concepts)
                 else:
-                    logger.warning(f"���找到 {analyze_date} 的成交量增加数据")
+                    logger.warning(f"未找到 {analyze_date} 的成交量增加数据")
                     
             except ValueError:
                 logger.error(f"日期格式错误: {date}, 请使用YYYY-MM-DD格式")
@@ -165,12 +168,19 @@ class ConceptVolumeAnalyzer:
                 'up_count'
             ]
             
+            # 只保留股票数量小于50的概念
+            concept_stats = concept_stats[concept_stats['stock_count'] < 50]
+            
+            if concept_stats.empty:
+                logger.warning(f"No concepts with less than 50 stocks found for date {date}")
+                return None
+            
             # 3. 计算概念强度得分
             concept_stats['strength_score'] = (
-                concept_stats['stock_count'] * 0.3 +  # 成交量增加的股票数量权重
-                concept_stats['avg_volume_increase'] * 0.3 +  # ���均成交量增幅权重
-                concept_stats['max_volume_increase'] * 0.2 +  # 最大成交量增幅权重
-                concept_stats['up_count'] * 0.2  # 上涨股票数权重
+                concept_stats['stock_count'] * 0.5 +  # 成交量增加的股票数量权重
+                concept_stats['avg_volume_increase'] * 0.1 +  # 平均成交量增幅权重
+                concept_stats['max_volume_increase'] * 0.1 +  # 最大成交量增幅权重
+                concept_stats['up_count'] * 0.3  # 上涨股票数权重
             ).round(2)
             
             # 4. 按强度得分排序
@@ -183,6 +193,8 @@ class ConceptVolumeAnalyzer:
             for concept in top_concepts:
                 concept_stocks = df[df['concept_name'] == concept].sort_values('volume_increase_ratio', ascending=False)
                 concept_details[concept] = concept_stocks[['stock_code', 'volume_increase_ratio', 'close', 'open']].to_dict('records')
+            
+            logger.info(f"Found {len(concept_stats)} concepts with more than 30 stocks")
             
             return {
                 'date': date,
@@ -200,31 +212,43 @@ class ConceptVolumeAnalyzer:
             if not results:
                 return
                 
-            # 1. 保存概念统计数据
-            concept_stats_df = pd.DataFrame.from_dict(results['concept_stats'], orient='index')
-            concept_stats_df['trade_date'] = date
-            concept_stats_df.to_sql('t_concept_volume_stats', self.engine, if_exists='append', index=True, index_label='concept_name')
-            
-            # 2. 保存概念详细数据
-            details_rows = []
-            for concept, stocks in results['concept_details'].items():
-                for stock in stocks:
-                    row = {
-                        'trade_date': date,
-                        'concept_name': concept,
-                        'stock_code': stock['stock_code'],
-                        'volume_increase_ratio': stock['volume_increase_ratio'],
-                        'close': stock['close'],
-                        'open': stock['open']
-                    }
-                    details_rows.append(row)
-            
-            if details_rows:
-                details_df = pd.DataFrame(details_rows)
-                details_df.to_sql('t_concept_volume_details', self.engine, if_exists='append', index=False)
-            
-            logger.info(f"Successfully saved analysis results for date {date}")
-            
+            with self.engine.begin() as conn:  # 使用事务
+                # 1. 保存概念统计数据
+                concept_stats_df = pd.DataFrame.from_dict(results['concept_stats'], orient='index')
+                concept_stats_df['trade_date'] = date
+                concept_stats_df.to_sql(
+                    't_concept_volume_stats', 
+                    conn, 
+                    if_exists='append', 
+                    index=True, 
+                    index_label='concept_name'
+                )
+                
+                # 2. 保存概念详细数据
+                details_rows = []
+                for concept, stocks in results['concept_details'].items():
+                    for stock in stocks:
+                        row = {
+                            'trade_date': date,
+                            'concept_name': concept,
+                            'stock_code': stock['stock_code'],
+                            'volume_increase_ratio': stock['volume_increase_ratio'],
+                            'close': stock['close'],
+                            'open': stock['open']
+                        }
+                        details_rows.append(row)
+                
+                if details_rows:
+                    details_df = pd.DataFrame(details_rows)
+                    details_df.to_sql(
+                        't_concept_volume_details', 
+                        conn, 
+                        if_exists='append', 
+                        index=False
+                    )
+                
+                logger.info(f"Successfully saved analysis results for date {date}")
+                
         except Exception as e:
             logger.error(f"Error saving analysis results for date {date}: {e}")
             raise
@@ -247,6 +271,31 @@ class ConceptVolumeAnalyzer:
         except Exception as e:
             logger.error(f"Error getting hot concepts for date {date}: {e}")
             return []
+
+    def clear_existing_data(self, date):
+        """清空指定日期的数据"""
+        try:
+            with self.engine.begin() as conn:  # 使用 begin() 来自动处理事务
+                # 清空概念统计数据
+                delete_stats = text("""
+                    DELETE FROM t_concept_volume_stats 
+                    WHERE trade_date = :date
+                """)
+                conn.execute(delete_stats, {'date': date})
+                
+                # 清空概念详情数据
+                delete_details = text("""
+                    DELETE FROM t_concept_volume_details 
+                    WHERE trade_date = :date
+                """)
+                conn.execute(delete_details, {'date': date})
+                
+                # 不需要显式提交，with block 结束时会自动提交
+                logger.info(f"Successfully cleared existing data for date {date}")
+                
+        except Exception as e:
+            logger.error(f"Error clearing existing data for date {date}: {e}")
+            raise
 
 def main():
     try:

@@ -85,9 +85,9 @@ class LimitUpConceptAnalyzer:
             
             # 3. 计算概念强度得分
             concept_stats['strength_score'] = (
-                concept_stats['limit_up_count'] * 0.4 +  # 涨停股票数量权重
-                concept_stats['avg_increase'] * 0.3 +  # 平均涨幅权重
-                concept_stats['max_increase'] * 0.3  # 最大涨幅权重
+                concept_stats['limit_up_count'] * 0.8 +  # 涨停股票数量权重
+                # concept_stats['avg_increase'] * 0.3 +  # 平均涨幅权重
+                concept_stats['max_increase'] * 0.2  # 最大涨幅权重
             ).round(2)
             
             # 4. 按强度得分排序
