@@ -179,5 +179,5 @@ def process_stock_data(date):
 
 if __name__ == "__main__":
     # 示例：处理指定日期的数据
-    date_to_process = '2024-12-23'
+    date_to_process = '2024-12-25'
     process_stock_data(date_to_process)

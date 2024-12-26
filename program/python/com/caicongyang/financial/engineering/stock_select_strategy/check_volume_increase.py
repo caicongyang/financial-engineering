@@ -96,5 +96,5 @@ def batch_check_volume_increase(date_list):
 
 if __name__ == "__main__":
     # 示例：批量检查多个日期
-    dates_to_check = ['2024-11-07','2024-11-08']
+    dates_to_check = ['2024-12-25']
     batch_check_volume_increase(dates_to_check)
