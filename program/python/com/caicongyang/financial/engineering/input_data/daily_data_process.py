@@ -12,16 +12,16 @@
 import sys
 import time
 import schedule
-from datetime import datetime, timedelta
-import inputHistoryStockDataFromAkShare as stock_import  # 改用Tushare接口
-import inputHistoryEtfDataFromAkShare as etf_import
-import calculate_stock_10day_average as stock_avg
-import calculate_etf_10day_average as etf_avg
+from datetime import datetime
 import check_volume_increase as stock_volume
 import check_etf_volume_increase as etf_volume
 import check_stock_limit as stock_limit
-import inputStockFundFlowRankFromAkShare as fund_flow_rank
-import inputStockFundFlowFromAkShare as fund_flow
+from com.caicongyang.financial.engineering.input_data import inputStockFundFlowFromAkShare as fund_flow, \
+    inputStockFundFlowRankFromAkShare as fund_flow_rank, inputHistoryEtfDataFromAkShare as etf_import, \
+    inputHistoryStockDataFromAkShare as stock_import, calculate_stock_10day_average as stock_avg, \
+    calculate_etf_10day_average as etf_avg
+
+
 def get_today_date():
     """获取当前日期，格式为YYYY-MM-DD"""
     return datetime.now().strftime('%Y-%m-%d')
@@ -98,8 +98,8 @@ def main():
 if __name__ == "__main__":
     # 如果想立即执行一次，可以取消下面的注释
     # today = get_today_date()
-    if is_trading_day("2024-11-20"):
-        process_daily_data("2024-11-22")
+    if is_trading_day("2025-02-07"):
+        process_daily_data("2025-02-07")
     # today = get_today_date()
     # if is_trading_day(today):
     #     process_daily_data(today)
