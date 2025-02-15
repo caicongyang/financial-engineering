@@ -25,14 +25,14 @@ RUN pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/we
     && pip install -r requirements.txt
 
 # 创建项目目录结构
-RUN mkdir -p /app/program/python/com/caicongyang/financial/engineering/stock_select_strategy
+RUN mkdir -p /app/program/python/com/caicongyang/financial/engineering/input_data
 
 # 复制所有相关的Python文件
-COPY program/python/com/caicongyang/financial/engineering/stock_select_strategy/*.py \
-     /app/program/python/com/caicongyang/financial/engineering/stock_select_strategy/
+COPY program/python/com/caicongyang/financial/engineering/input_data/*.py \
+     /app/program/python/com/caicongyang/financial/engineering/input_data/
 
 # 设置工作目录
-WORKDIR /app/program/python/com/caicongyang/financial/engineering/stock_select_strategy
+WORKDIR /app/program/python/com/caicongyang/financial/engineering/input_data
 
 # 设置环境变量
 ENV PYTHONPATH=/app

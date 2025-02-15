@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 import time
 import logging
+import sys
 
 # 列多的时候，不隐藏
 pd.set_option('expand_frame_repr', False)
@@ -128,6 +129,7 @@ def process_etf_data(date):
         # 获取ETF列表
         fund_etf_spot_em_df = ak.fund_etf_spot_em()
         total_etfs = len(fund_etf_spot_em_df)
+        print(f"Total etfs: {total_etfs}")
         
         # 准备任务参数
         tasks = [(row['代码'], row['名称'], date) 
@@ -177,7 +179,48 @@ def process_etf_data(date):
     except Exception as e:
         logger.error(f"An error occurred while processing data: {e}")
 
+def process_multiple_days(date_list):
+    """
+    处理指定日期列表中的ETF数据
+    
+    参数:
+        date_list (list): 日期列表，格式：['YYYY-MM-DD', 'YYYY-MM-DD', ...]
+    """
+    try:
+        # 处理每一天的数据
+        total_days = len(date_list)
+        for idx, date in enumerate(date_list, 1):
+            logger.info(f"Processing day {idx}/{total_days}: {date}")
+            try:
+                process_etf_data(date)
+                logger.info(f"Successfully processed data for {date}")
+            except Exception as e:
+                logger.error(f"Error processing data for {date}: {e}")
+            
+            # 添加短暂延迟，避免请求过于频繁
+            time.sleep(1)
+        
+        logger.info("Completed processing all dates")
+        
+    except Exception as e:
+        logger.error(f"Error in process_multiple_days: {e}")
+        raise
+
 if __name__ == "__main__":
-    # 示例：处理指定日期的数据
-    date_to_process = '2024-12-23'
-    process_etf_data(date_to_process)
+    # 示例：处理指定日期列表的数据
+    try:
+        # 设置要处理的日期列表
+        dates_to_process = [
+            '2025-02-11'
+        ]
+        
+        logger.info(f"Starting batch processing for {len(dates_to_process)} days")
+        process_multiple_days(dates_to_process)
+        
+    except Exception as e:
+        logger.error(f"Main process error: {e}")
+        sys.exit(1)
+
+    # 如果只想处理单天数据，可以使用：
+    # date_to_process = '2024-02-10'
+    # process_etf_data(date_to_process)

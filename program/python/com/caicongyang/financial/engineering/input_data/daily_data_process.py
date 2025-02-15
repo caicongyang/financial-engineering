@@ -1,5 +1,14 @@
-# !/usr/bin/python
+#!/usr/bin/python
 # -*- coding: UTF-8 -*-
+
+import os
+import sys
+
+# 获取项目根目录
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../../../"))
+# 添加 program/python 到 Python 路径
+python_root = os.path.join(project_root, "program", "python")
+sys.path.append(python_root)
 
 """
 日常数据处理的入口文件，按顺序执行以下操作：
@@ -9,17 +18,22 @@
 每天下午6点自动执行
 """
 
-import sys
 import time
 import schedule
 from datetime import datetime
 import check_volume_increase as stock_volume
 import check_etf_volume_increase as etf_volume
 import check_stock_limit as stock_limit
-from com.caicongyang.financial.engineering.input_data import inputStockFundFlowFromAkShare as fund_flow, \
-    inputStockFundFlowRankFromAkShare as fund_flow_rank, inputHistoryEtfDataFromAkShare as etf_import, \
-    inputHistoryStockDataFromAkShare as stock_import, calculate_stock_10day_average as stock_avg, \
-    calculate_etf_10day_average as etf_avg
+from com.caicongyang.financial.engineering.input_data import (
+    inputStockFundFlowFromAkShare as fund_flow,
+    inputStockFundFlowRankFromAkShare as fund_flow_rank,
+    inputHistoryEtfDataFromAkShare as etf_import,
+    inputHistoryStockDataFromAkShare as stock_import,
+    calculate_stock_10day_average as stock_avg,
+    calculate_etf_10day_average as etf_avg,
+    inputStockConceptFromAkShare as concept_import,
+    inputStockMinTradeFromAkShare as min_trade_import
+)
 
 
 def get_today_date():
@@ -31,6 +45,8 @@ def process_daily_data(date):
     print(f"\n=== Starting daily data processing for {date} ===\n")
 
     try:
+
+
         # 1. 导入股票历史数据
         print("\n--- Importing stock historical data ---")
         stock_import.process_stock_data(date)
@@ -59,11 +75,21 @@ def process_daily_data(date):
         print("\n--- Checking stock limit  ---")
         stock_limit.batch_check_limit_stocks([date])
 
+        # 8. 检查股票资金流排名
         print("\n--- Processing stock fund flow rank data ---")
         fund_flow_rank.process_fund_flow_rank_data(date)
 
+        # 9. 检查股票资金流
         print("\n--- Processing stock fund flow data ---")
         fund_flow.process_fund_flow_data(date)
+
+        # 10. 检查股票概念
+        print("\n--- Processing stock concept data ---")
+        concept_import.process_daily_concept(date)
+
+        # 11. 处理5分钟交易数据
+        print("\n--- Processing stock 5-min trade data ---")
+        min_trade_import.process_min_trade_data(date)
 
         print(f"\n=== Daily data processing completed for {date} ===\n")
 
@@ -98,8 +124,8 @@ def main():
 if __name__ == "__main__":
     # 如果想立即执行一次，可以取消下面的注释
     # today = get_today_date()
-    if is_trading_day("2025-02-07"):
-        process_daily_data("2025-02-07")
+    if is_trading_day("2025-02-13"):
+        process_daily_data("2025-02-13")
     # today = get_today_date()
     # if is_trading_day(today):
     #     process_daily_data(today)

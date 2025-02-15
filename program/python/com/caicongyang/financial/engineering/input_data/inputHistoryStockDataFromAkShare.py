@@ -99,6 +99,7 @@ def get_stock_price(args):
         # 删除不需要的列
         df = df.drop(['振幅', '换手率', '股票代码'], axis=1, errors='ignore')
         df = df.reset_index(drop=True)
+
         
         # 判断为空说明是脏数据
         if df.empty:
@@ -129,6 +130,7 @@ def process_stock_data(date):
         # 获取所有A股股票列表
         stock_info = ak.stock_zh_a_spot_em()[['代码', '名称']]
         total_stocks = len(stock_info)
+        print(f"Total stocks: {total_stocks}")
         
         # 准备任务参数
         tasks = [(row['代码'], row['名称'], date) for _, row in stock_info.iterrows()]
@@ -179,5 +181,5 @@ def process_stock_data(date):
 
 if __name__ == "__main__":
     # 示例：处理指定日期的数据
-    date_to_process = '2024-12-25'
+    date_to_process = '2025-02-11'
     process_stock_data(date_to_process)

@@ -6,26 +6,18 @@
 
 策略说明：
 1. 数据筛选：
-   - 过滤ST股票、次新股和停牌股
-   - 只统计收盘价大于开盘价的股票（保证股价上涨）
-   - 剔除概念股数量大于50的概念（避免概念太宽泛）
+- 获取当日成交量增幅超过100%的股票
+- 关联股票所属概念板块
+- 过滤股票数量在3-50之间的概念（避免概念太宽泛或太集中）
 
-2. 概念强度评分体系：
-   - 股票数量权重：根据市场趋势动态调整（牛市0.4，熊市0.3）
-   - 成交量增幅：平均增幅(0.2)和最大增幅(0.2)各占一定权重
-   - 上涨股票数：权重0.2，反映概念内股票的整体表现
-   - 机构参与度：机构净买入金额权重0.1，反映机构认可度
-   - 资金流向：主力净流入权重0.15，散户净流入权重-0.05（主力认可加分，散户追涨减分）
+2. 核心指标：
+- 概念内成交量平均增幅：反映整体热度
+- 概念内最大成交量增幅：反映龙头股表现
+- 涉及股票数量：反映概念覆盖广度
 
-3. 风险控制：
-   - 剔除概念股过多的板块（>50只股票）
-   - 考虑市场趋势动态调整权重
-   - 通过资金流向分析避免跟风炒作
-
-4. 选股逻辑：
-   - 先选出强势概念（按强度得分排序）
-   - 再从强势概念中选出龙头股（按成交量增幅排序）
-   - 结合资金流向和机构参与度验证
+3. 结果展示：
+- 按平均成交量增幅降序排列
+- 展示每个概念的具体股票及其成交量增幅
 """
 
 from sqlalchemy import create_engine, text
@@ -115,17 +107,24 @@ class ConceptVolumeAnalyzer:
                 continue
 
     def print_analysis_results(self, date, hot_concepts):
-        """打印分析结果"""
+        """
+        打印热门概念分析结果
+        
+        输出内容：
+        - 概念名称
+        - 涉及股票数量
+        - 平均成交量增幅（倍）
+        - 最大成交量增幅（倍）
+        - 相关股票列表（按增幅排序）
+        """
         print(f"\n热门概念板块分析 ({date}):")
         print("-" * 80)
         
         for concept in hot_concepts:
             print(f"概念: {concept['concept_name']}")
             print(f"成交量增加股票数: {concept['stock_count']}")
-            print(f"平均成交量增幅: {concept['avg_volume_increase']:.2f}")
-            print(f"最大成交量增幅: {concept['max_volume_increase']:.2f}")
-            print(f"上涨股票数: {concept['up_count']}")
-            print(f"强度得分: {concept['strength_score']:.2f}")
+            print(f"平均成交量增幅: {concept['avg_increase']:.2f}")
+            print(f"最大成交量增幅: {concept['max_increase']:.2f}")
             print("-" * 80)
             
             # 获取并打印该概念的具体股票信息
@@ -159,51 +158,22 @@ class ConceptVolumeAnalyzer:
 
     def analyze_concept_volume(self, date):
         """
-        分析指定日期的概念股成交量上涨情况
+        概念成交量热点分析
         
-        策略步骤：
-        1. 数据获取和预处理：
-           - 获取成交量增加的股票
-           - 关联概念信息
-           - 获取机构和资金流向数据
-           - 过滤问题股票（ST、次新、停牌）
-        
-        2. 概念分组统计：
-           - 计算每个概念的股票数量
-           - 统计成交量增幅（平均值和最大值）
-           - 统计上涨股票数量
-           - 汇总资金流向数据
-        
-        3. 概念强度评分：
-           - 根据市场趋势动态调整权重
-           - 综合考虑多个因子计算得分
-           - 特别关注机构资金和主力资金
-        
-        4. 结果筛选：
-           - 按强度得分排序
-           - 选取前10个最强概念
-           - 获取每个概念的具体股票信息
+        实现步骤：
+        1. 获取数据：从数据库获取当日成交量增幅>100%的股票及其所属概念
+        2. 概念聚类：按概念分组统计股票数量、平均/最大成交量增幅
+        3. 结果过滤：保留3-50只股票的概念，避免无效数据
+        4. 结果排序：按平均成交量增幅降序排列
         """
         try:
-            # 1. 获取当天成交量增加的股票
+            # 1. 获取当日成交量增加的股票（增幅>50%）
             query = text("""
-                SELECT v.stock_code, v.volume_increase_ratio, v.close, v.open,
-                       c.concept_name, c.concept_code,
-                       s.market_value,  -- 市值数据用于筛选
-                       i.institutional_net_buy,  -- 机构净买入：反映机构认可度
-                       m.main_net_inflow,  -- 主力净流入：反映主力资金动向
-                       r.retail_net_inflow  -- 散户净流入：用于识别跟风盘
+                SELECT v.stock_code, v.volume_increase_ratio, c.concept_name
                 FROM t_volume_increase v
                 JOIN t_concept_stock c ON v.stock_code = c.stock_code
-                JOIN t_stock_basic s ON v.stock_code = s.stock_code  
-                JOIN t_institutional_investment i ON v.stock_code = i.stock_code
-                JOIN t_main_net_inflow m ON v.stock_code = m.stock_code
-                JOIN t_retail_net_inflow r ON v.stock_code = r.stock_code
                 WHERE v.trade_date = :date
-                AND v.close >= v.open  -- 确保股价上涨
-                AND s.st_status = 1    -- 排除ST股票
-                AND s.listing_date < DATE_SUB(:date, INTERVAL 60 DAY)  -- 排除次新股
-                AND s.is_suspended = 0  -- 排除停牌股
+                AND v.volume_increase_ratio > 2  -- 成交量增加50%以上
             """)
             
             df = pd.read_sql(query, self.engine, params={'date': date})
@@ -214,66 +184,33 @@ class ConceptVolumeAnalyzer:
             
             # 2. 按概念分组统计
             concept_stats = df.groupby('concept_name').agg({
-                'stock_code': 'count',  # 概念内股票数：反映概念范围
-                'volume_increase_ratio': ['mean', 'max'],  # 成交量增幅：反映活跃度
-                'close': lambda x: (x > x.shift(1)).sum(),  # 上涨股票数：反映强度
-                'institutional_net_buy': 'sum',  # 机构净买入总额：反映机构参与度
-                'main_net_inflow': 'sum',  # 主力净流入总额：反映主力认可度
-                'retail_net_inflow': 'sum'  # 散户净流入总额：反映跟风程度
+                'stock_code': 'count',
+                'volume_increase_ratio': ['mean', 'max']
             }).round(2)
             
             # 重命名列
-            concept_stats.columns = [
-                'stock_count',
-                'avg_volume_increase',
-                'max_volume_increase',
-                'up_count',
-                'institutional_net_buy',
-                'main_net_inflow',
-                'retail_net_inflow'
+            concept_stats.columns = ['stock_count', 'avg_increase', 'max_increase']
+            
+            # 3. 过滤无效概念
+            concept_stats = concept_stats[
+                (concept_stats['stock_count'] > 5) &  # 至少5只股票
+                (concept_stats['stock_count'] < 50)   # 最多50只股票
             ]
             
-            # 只保留股票数量小于50的概念
-            concept_stats = concept_stats[concept_stats['stock_count'] < 50]
-            
             if concept_stats.empty:
-                logger.warning(f"No concepts with less than 50 stocks found for date {date}")
+                logger.warning(f"No valid concepts found for date {date}")
                 return None
             
-            # 3. 计算概念强度得分
-            market_trend = 'up' if df['volume_increase_ratio'].mean() > 0 else 'down'
-            concept_stats['strength_score'] = (
-                # 股票数量权重：牛市加大权重，看重热度
-                concept_stats['stock_count'] * (0.4 if market_trend == 'up' else 0.3) +
-                # 成交量增幅：反映资金参与度
-                concept_stats['avg_volume_increase'] * 0.2 +
-                concept_stats['max_volume_increase'] * 0.2 +
-                # 上涨股票数：反映概念整体强度
-                concept_stats['up_count'] * 0.2 +
-                # 机构资金：机构认可度指标
-                concept_stats['institutional_net_buy'] * 0.1 +
-                # 资金流向：主力加分，散户跟风减分
-                concept_stats['main_net_inflow'] * 0.15 -
-                concept_stats['retail_net_inflow'] * 0.05
-            ).round(2)
-            
-            # 4. 按强度得分排序
-            concept_stats = concept_stats.sort_values('strength_score', ascending=False)
+            # 4. 按平均增幅排序
+            concept_stats = concept_stats.sort_values('avg_increase', ascending=False)
             
             # 5. 获取每个概念的具体股票
-            top_concepts = concept_stats.head(10).index.tolist()
             concept_details = {}
-            
-            for concept in top_concepts:
-                # 获取概念内具体股票，按成交量增幅排序找龙头
+            for concept in concept_stats.index:
                 concept_stocks = df[df['concept_name'] == concept].sort_values(
                     'volume_increase_ratio', ascending=False
                 )
-                concept_details[concept] = concept_stocks[
-                    ['stock_code', 'volume_increase_ratio', 'close', 'open']
-                ].to_dict('records')
-            
-            logger.info(f"Found {len(concept_stats)} concepts with more than 30 stocks")
+                concept_details[concept] = concept_stocks[['stock_code', 'volume_increase_ratio']].to_dict('records')
             
             return {
                 'date': date,
@@ -286,7 +223,16 @@ class ConceptVolumeAnalyzer:
             raise
 
     def save_analysis_results(self, results, date):
-        """保存分析结果到数据库"""
+        """
+        保存分析结果到数据库
+        
+        存储结构：
+        1. 概念统计表(t_concept_volume_stats)：
+           - 概念名称 | 日期 | 股票数量 | 平均增幅 | 最大增幅
+           
+        2. 概念详情表(t_concept_volume_details)：
+           - 日期 | 概念名称 | 股票代码 | 成交量增幅
+        """
         try:
             if not results:
                 return
@@ -311,9 +257,7 @@ class ConceptVolumeAnalyzer:
                             'trade_date': date,
                             'concept_name': concept,
                             'stock_code': stock['stock_code'],
-                            'volume_increase_ratio': stock['volume_increase_ratio'],
-                            'close': stock['close'],
-                            'open': stock['open']
+                            'volume_increase_ratio': stock['volume_increase_ratio']
                         }
                         details_rows.append(row)
                 
@@ -336,11 +280,11 @@ class ConceptVolumeAnalyzer:
         """获取指定日期的热门概念"""
         try:
             query = text("""
-                SELECT concept_name, stock_count, avg_volume_increase, 
-                       max_volume_increase, up_count, strength_score
+                SELECT concept_name, stock_count, avg_increase, 
+                       max_increase
                 FROM t_concept_volume_stats
                 WHERE trade_date = :date
-                ORDER BY strength_score DESC
+                ORDER BY avg_increase DESC
                 LIMIT :limit
             """)
             

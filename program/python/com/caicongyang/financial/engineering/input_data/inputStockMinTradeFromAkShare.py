@@ -173,7 +173,19 @@ def process_all_stocks_min_data(date):
     end_time = time.time()
     print(f"\nAll stocks processed. Total time: {end_time - start_time:.2f} seconds")
 
+def process_min_trade_data(date):
+    """
+    处理指定日期的5分钟交易数据
+    :param date: 日期，格式：YYYY-MM-DD
+    """
+    try:
+        print(f"开始处理{date}的5分钟交易数据...")
+        process_all_stocks_min_data(date)
+        print(f"{date}的5分钟交易数据处理完成")
+        return True
+    except Exception as e:
+        print(f"处理5分钟交易数据失败: {e}")
+        return False
+
 if __name__ == "__main__":
-    # 示例：处理指定日期所有股票的数据
-    date_to_process = '2024-12-25'
-    process_all_stocks_min_data(date_to_process) 
+    process_min_trade_data('2024-12-25') 

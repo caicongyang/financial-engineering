@@ -9,6 +9,7 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+import sys
 
 # 配置日志
 logging.basicConfig(
@@ -184,29 +185,45 @@ class ConceptDataLoader:
             logger.error(f"Error loading concept stocks: {e}")
             raise
 
-def main():
-    try:
-        loader = ConceptDataLoader()
-        
-        # 1. 清空历史数据
-        logger.info("Clearing historical data...")
-        loader.truncate_tables()
-        
-        # 2. 加载概念数据
-        logger.info("Loading concept data...")
-        concept_df = loader.load_concept_data()
-        
-        # 3. 加载概念股票数据
-        logger.info("Loading concept stocks data...")
-        loader.load_concept_stocks(concept_df)
-        
-        logger.info("All data loaded successfully")
-        
-    except Exception as e:
-        logger.error(f"Program failed: {e}")
+    def process_daily_concept(self, date=None):
+        """
+        每日概念数据处理入口
+        :param date: 日期参数（保持接口统一，实际未使用）
+        :return: 处理结果（True/False）
+        """
+        try:
+            logger.info("开始更新概念数据...")
+            
+            # 1. 清空历史数据
+            self.truncate_tables()
+            
+            # 2. 加载最新概念数据
+            concept_df = self.load_concept_data()
+            
+            # 3. 加载概念股关联数据
+            self.load_concept_stocks(concept_df)
+            
+            logger.info("概念数据更新完成")
+            return True
+            
+        except Exception as e:
+            logger.error(f"更新概念数据失败: {str(e)}")
+            return False
 
+def process_daily_concept(date=None):
+    """
+    模块级处理函数（保持接口统一）
+    :param date: 日期参数（保持接口统一，实际未使用）
+    :return: 处理结果（True/False）
+    """
+    loader = ConceptDataLoader()
+    return loader.process_daily_concept(date)
+
+# 保留命令行调用方式
 if __name__ == "__main__":
-    main()
+    success = process_daily_concept()
+    if not success:
+        sys.exit(1)
 
 
 
