@@ -133,11 +133,14 @@ class ConceptVolumeAnalyzer:
     def print_concept_stocks(self, date, concept_name):
         """打印概念相关股票详情"""
         query = text("""
-            SELECT stock_code, volume_increase_ratio
-            FROM t_concept_volume_details
-            WHERE trade_date = :date
-            AND concept_name = :concept_name
-            ORDER BY volume_increase_ratio DESC
+            SELECT d.stock_code, d.volume_increase_ratio, 
+                   s.stock_name, s.pct_chg, s.close
+            FROM t_concept_volume_details d
+            JOIN t_stock s ON d.stock_code = s.stock_code 
+                 AND d.trade_date = s.trade_date
+            WHERE d.trade_date = :date
+            AND d.concept_name = :concept_name
+            ORDER BY d.volume_increase_ratio DESC
         """)
         
         with self.engine.connect() as conn:
@@ -148,10 +151,12 @@ class ConceptVolumeAnalyzer:
         
         if not stocks.empty:
             print(f"\n{concept_name} 概念相关股票:")
-            print("股票代码    成交量增幅")
-            print("-" * 30)
+            print("代码     名称     成交量增幅   涨跌幅   收盘价")
+            print("-" * 55)
             for _, stock in stocks.iterrows():
-                print(f"{stock['stock_code']}    {stock['volume_increase_ratio']:>8.2f}倍")
+                print(f"{stock['stock_code']}  {stock['stock_name']:<8}  "
+                      f"{stock['volume_increase_ratio']:>8.2f}倍  "
+                      f"{stock['pct_chg']:>6.2f}%  {stock['close']:>7.2f}")
             print()
 
     def analyze_concept_volume(self, date):
@@ -235,7 +240,7 @@ class ConceptVolumeAnalyzer:
             if not results:
                 return
                 
-            with self.engine.begin() as conn:  # 使用事务
+            with self.engine.begin() as conn:
                 # 1. 保存概念统计数据
                 concept_stats_df = pd.DataFrame.from_dict(results['concept_stats'], orient='index')
                 concept_stats_df['trade_date'] = date
@@ -251,13 +256,30 @@ class ConceptVolumeAnalyzer:
                 details_rows = []
                 for concept, stocks in results['concept_details'].items():
                     for stock in stocks:
-                        row = {
-                            'trade_date': date,
-                            'concept_name': concept,
-                            'stock_code': stock['stock_code'],
-                            'volume_increase_ratio': stock['volume_increase_ratio']
-                        }
-                        details_rows.append(row)
+                        # 获取股票名称和涨跌幅
+                        stock_query = text("""
+                            SELECT stock_name, pct_chg, close
+                            FROM t_stock
+                            WHERE stock_code = :code
+                            AND trade_date = :date
+                        """)
+                        stock_info = pd.read_sql(
+                            stock_query, 
+                            conn, 
+                            params={'code': stock['stock_code'], 'date': date}
+                        )
+                        
+                        if not stock_info.empty:
+                            row = {
+                                'trade_date': date,
+                                'concept_name': concept,
+                                'stock_code': stock['stock_code'],
+                                'stock_name': stock_info['stock_name'].iloc[0],
+                                'volume_increase_ratio': stock['volume_increase_ratio'],
+                                'pct_chg': stock_info['pct_chg'].iloc[0],
+                                'close': stock_info['close'].iloc[0]
+                            }
+                            details_rows.append(row)
                 
                 if details_rows:
                     details_df = pd.DataFrame(details_rows)
