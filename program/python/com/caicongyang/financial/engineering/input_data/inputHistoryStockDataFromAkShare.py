@@ -140,7 +140,7 @@ def process_stock_data(date):
         success_count = 0
         
         # 使用线程池处理数据
-        with ThreadPoolExecutor(max_workers=20) as executor:
+        with ThreadPoolExecutor(max_workers=10) as executor:
             # 提交所有任务
             future_to_stock = {executor.submit(get_stock_price, task): task[0] for task in tasks}
             

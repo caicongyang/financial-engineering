@@ -8,7 +8,7 @@
 1. 数据筛选：
 - 获取当日成交量增幅超过100%的股票
 - 关联股票所属概念板块
-- 过滤股票数量在3-50之间的概念（避免概念太宽泛或太集中）
+- 过滤股票数量在5-50之间的概念（避免概念太宽泛或太集中）
 
 2. 核心指标：
 - 概念内成交量平均增幅：反映整体热度
@@ -133,7 +133,7 @@ class ConceptVolumeAnalyzer:
     def print_concept_stocks(self, date, concept_name):
         """打印概念相关股票详情"""
         query = text("""
-            SELECT stock_code, volume_increase_ratio, close, open
+            SELECT stock_code, volume_increase_ratio
             FROM t_concept_volume_details
             WHERE trade_date = :date
             AND concept_name = :concept_name
@@ -148,12 +148,10 @@ class ConceptVolumeAnalyzer:
         
         if not stocks.empty:
             print(f"\n{concept_name} 概念相关股票:")
-            print("股票代码  成交量增幅    收盘价   开盘价   涨跌幅")
-            print("-" * 50)
+            print("股票代码    成交量增幅")
+            print("-" * 30)
             for _, stock in stocks.iterrows():
-                price_change = ((stock['close'] - stock['open']) / stock['open'] * 100)
-                print(f"{stock['stock_code']}  {stock['volume_increase_ratio']:>8.2f}倍  "
-                      f"{stock['close']:>7.2f}  {stock['open']:>7.2f}  {price_change:>6.2f}%")
+                print(f"{stock['stock_code']}    {stock['volume_increase_ratio']:>8.2f}倍")
             print()
 
     def analyze_concept_volume(self, date):
@@ -323,7 +321,7 @@ class ConceptVolumeAnalyzer:
 def main():
     try:
         # 要分析的日期列表
-        dates_to_check = ['2025-02-07']
+        dates_to_check = ['2025-02-17']
         
         analyzer = ConceptVolumeAnalyzer()
         analyzer.batch_analyze_concepts(dates_to_check)

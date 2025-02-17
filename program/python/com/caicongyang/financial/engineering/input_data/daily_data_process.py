@@ -124,8 +124,8 @@ def main():
 if __name__ == "__main__":
     # 如果想立即执行一次，可以取消下面的注释
     # today = get_today_date()
-    if is_trading_day("2025-02-13"):
-        process_daily_data("2025-02-13")
+    if is_trading_day("2025-02-12"):
+        process_daily_data("2025-02-12")
     # today = get_today_date()
     # if is_trading_day(today):
     #     process_daily_data(today)

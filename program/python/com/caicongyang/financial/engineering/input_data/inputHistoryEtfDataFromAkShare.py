@@ -5,7 +5,7 @@
 把AkShare的ETF数据导入到本地数据库
 """
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 import akshare as ak
 import pandas as pd
 from datetime import datetime
@@ -60,6 +60,30 @@ def df_to_mysql(df, table_name, column_mapping):
         # 确保日期列格式正确
         if 'trade_date' in df.columns:
             df['trade_date'] = pd.to_datetime(df['trade_date'])
+
+        # 计算涨跌幅
+        for index, row in df.iterrows():
+            # 获取前一天收盘价
+            prev_close_query = text("""
+                SELECT close 
+                FROM t_etf 
+                WHERE stock_code = :code 
+                AND trade_date < :date 
+                ORDER BY trade_date DESC 
+                LIMIT 1
+            """)
+            
+            with engine.connect() as conn:
+                prev_close = conn.execute(
+                    prev_close_query, 
+                    {'code': row['stock_code'], 'date': row['trade_date']}
+                ).scalar()
+            
+            # 计算涨跌幅
+            if prev_close:
+                df.at[index, 'pct_chg'] = round((row['close'] - prev_close) / prev_close * 100, 2)
+            else:
+                df.at[index, 'pct_chg'] = 0.0
 
         # 使用事务保存数据
         with engine.begin() as connection:
@@ -211,7 +235,7 @@ if __name__ == "__main__":
     try:
         # 设置要处理的日期列表
         dates_to_process = [
-            '2025-02-11'
+            '2025-02-17'
         ]
         
         logger.info(f"Starting batch processing for {len(dates_to_process)} days")
