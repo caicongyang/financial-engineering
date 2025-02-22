@@ -12,7 +12,7 @@ from datetime import datetime
 # 数据库连接信息
 mysql_user = 'root'
 mysql_password = 'root'
-mysql_host = '101.43.6.49'
+mysql_host = '43.133.13.36'
 mysql_port = '3333'
 mysql_db = 'stock'
 source_table = 't_stock'  # 股票数据表

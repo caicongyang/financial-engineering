@@ -39,7 +39,7 @@ class ConceptVolumeAnalyzer:
         self.mysql_config = {
             'user': 'root',
             'password': 'root',
-            'host': '101.43.6.49',
+            'host': '43.133.13.36',
             'port': '3333',
             'db': 'stock'
         }
@@ -343,7 +343,7 @@ class ConceptVolumeAnalyzer:
 def main():
     try:
         # 要分析的日期列表
-        dates_to_check = ['2025-02-17']
+        dates_to_check = ['2025-02-19']
         
         analyzer = ConceptVolumeAnalyzer()
         analyzer.batch_analyze_concepts(dates_to_check)

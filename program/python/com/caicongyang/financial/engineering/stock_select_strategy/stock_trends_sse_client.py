@@ -91,7 +91,7 @@ class StockTrendsSSEClient:
         self.current_server_index = 0
         
         # Redis配置
-        self.redis_host = '101.43.6.49'
+        self.redis_host = '43.133.13.36'
         self.redis_port = 3373
         self.redis_db = 0
         self.redis_password = '24777365ccyCCY!'
@@ -144,7 +144,7 @@ class StockTrendsSSEClient:
         
         # MySQL配置
         self.mysql_config = {
-            'host': '101.43.6.49',
+            'host': '43.133.13.36',
             'port': 3333,
             'user': 'root',
             'password': 'root',

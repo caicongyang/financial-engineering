@@ -38,7 +38,7 @@ class LimitUpConceptAnalyzer:
         self.mysql_config = {
             'user': 'root',
             'password': 'root',
-            'host': '101.43.6.49',
+            'host': '43.133.13.36',
             'port': '3333',
             'db': 'stock'
         }
@@ -194,7 +194,7 @@ class LimitUpConceptAnalyzer:
         print("-" * 80)
         
         concept_stats = pd.DataFrame.from_dict(results['concept_stats'], orient='index')
-        top_concepts = concept_stats.head(10)
+        top_concepts = concept_stats.head(20)
         
         for concept_name, stats in top_concepts.iterrows():
             print(f"\n概念: {concept_name}")
@@ -257,4 +257,4 @@ def process_limit_up_concept(date):
         return False
 
 if __name__ == "__main__":
-    process_limit_up_concept('2025-02-17') 
+    process_limit_up_concept('2025-02-19')

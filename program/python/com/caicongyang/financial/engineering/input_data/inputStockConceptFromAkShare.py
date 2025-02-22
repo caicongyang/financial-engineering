@@ -28,7 +28,7 @@ class ConceptDataLoader:
         self.mysql_config = {
             'user': 'root',
             'password': 'root',
-            'host': '101.43.6.49',
+            'host': '43.133.13.36',
             'port': '3333',
             'db': 'stock'
         }

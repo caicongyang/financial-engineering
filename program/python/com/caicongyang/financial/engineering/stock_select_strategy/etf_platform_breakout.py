@@ -46,7 +46,7 @@ class EtfPlatformBreakoutStrategy:
         # 数据库连接配置
         self.mysql_user = 'root'
         self.mysql_password = 'root'
-        self.mysql_host = '101.43.6.49'
+        self.mysql_host = '43.133.13.36'
         self.mysql_port = '3333'
         self.mysql_db = 'stock'
         # 创建数据库连接引擎
