@@ -34,6 +34,10 @@ from com.caicongyang.financial.engineering.input_data import (
     inputStockConceptFromAkShare as concept_import,
     inputStockMinTradeFromAkShare as min_trade_import
 )
+from com.caicongyang.financial.engineering.stock_select_strategy import (
+    analyze_concept_volume,
+    analyze_limit_up_concept
+)
 
 
 def get_today_date():
@@ -87,9 +91,20 @@ def process_daily_data(date):
         print("\n--- Processing stock concept data ---")
         concept_import.process_daily_concept(date)
 
-        # 11. 处理5分钟交易数据
-        print("\n--- Processing stock 5-min trade data ---")
-        min_trade_import.process_min_trade_data(date)
+        # 11. 分析成交量概念
+        print("\n--- Analyzing volume concepts ---")
+        analyze_concept_volume.process_concept_volume(date)
+        
+        # 12. 分析涨停概念
+        print("\n--- Analyzing limit up concepts ---")
+        analyze_limit_up_concept.process_limit_up_concept(date)
+
+        # # 11. 处理5分钟交易数据
+        # print("\n--- Processing stock 5-min trade data ---")
+        # min_trade_import.process_min_trade_data(date)
+
+
+        
 
         print(f"\n=== Daily data processing completed for {date} ===\n")
 

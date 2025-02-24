@@ -340,16 +340,23 @@ class ConceptVolumeAnalyzer:
             logger.error(f"Error clearing existing data for date {date}: {e}")
             raise
 
-def main():
+def process_concept_volume(date):
+    """
+    模块级处理函数（保持接口统一）
+    :param date: 日期参数
+    :return: 处理结果（True/False）
+    """
     try:
-        # 要分析的日期列表
-        dates_to_check = ['2025-02-19']
-        
         analyzer = ConceptVolumeAnalyzer()
-        analyzer.batch_analyze_concepts(dates_to_check)
-        
+        results = analyzer.analyze_concept_volume(date)
+        if results:
+            analyzer.print_analysis_results(date, results)
+            logger.info(f"成交量概念分析完成，数据已保存到数据库")
+            return True
+        return False
     except Exception as e:
-        logger.error(f"程序执行失败: {e}")
+        logger.error(f"处理成交量概念数据失败: {str(e)}")
+        return False
 
 if __name__ == "__main__":
-    main() 
+    process_concept_volume('2025-02-19') 
