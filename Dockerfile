@@ -24,12 +24,15 @@ RUN pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/we
     && pip config set install.trusted-host mirrors.tuna.tsinghua.edu.cn \
     && pip install -r requirements.txt
 
-# 创建项目目录结构
-RUN mkdir -p /app/program/python/com/caicongyang/financial/engineering/input_data
+# 创建完整的项目目录结构
+RUN mkdir -p /app/program/python/com/caicongyang/financial/engineering/{input_data,stock_select_strategy}
 
-# 复制所有相关的Python文件
-COPY program/python/com/caicongyang/financial/engineering/input_data/*.py \
-     /app/program/python/com/caicongyang/financial/engineering/input_data/
+# 复制整个项目结构
+COPY program /app/program/
+COPY setup.py /app/
+
+# 安装项目包
+RUN pip install -e .
 
 # 设置工作目录
 WORKDIR /app/program/python/com/caicongyang/financial/engineering/input_data

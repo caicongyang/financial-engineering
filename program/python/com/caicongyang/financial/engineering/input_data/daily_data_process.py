@@ -129,7 +129,7 @@ def main():
     print("Setting up scheduled job to run at 18:00 every day...")
     
     # 设置每天下午6点执行任务
-    schedule.every().day.at("18:00").do(run_daily_job)
+    schedule.every().day.at("18:30").do(run_daily_job)
     
     # 运行定时任务
     while True:
@@ -139,7 +139,7 @@ def main():
 if __name__ == "__main__":
     # 如果想立即执行一次，可以取消下面的注释
     today = get_today_date()
-    # today = "2025-02-25"
+    # today = "2025-02-24"
     if is_trading_day(today):
         process_daily_data(today)
     
