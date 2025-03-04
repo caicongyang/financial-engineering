@@ -139,7 +139,7 @@ def main():
 if __name__ == "__main__":
     # 如果想立即执行一次，可以取消下面的注释
     today = get_today_date()
-    # today = "2025-02-24"
+    # today = "2025-03-03"
     if is_trading_day(today):
         process_daily_data(today)
     

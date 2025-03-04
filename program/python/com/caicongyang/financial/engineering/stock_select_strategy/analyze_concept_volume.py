@@ -95,7 +95,7 @@ class ConceptVolumeAnalyzer:
                         continue
                     
                     # 打印结果
-                    self.print_analysis_results(analyze_date, hot_concepts)
+                    self.print_analysis_results(analyze_date, results)
                 else:
                     logger.warning(f"未找到 {analyze_date} 的成交量增加数据")
                     
@@ -106,29 +106,23 @@ class ConceptVolumeAnalyzer:
                 logger.error(f"分析 {date} 数据时发生错误: {e}")
                 continue
 
-    def print_analysis_results(self, date, hot_concepts):
-        """
-        打印热门概念分析结果
-        
-        输出内容：
-        - 概念名称
-        - 涉及股票数量
-        - 平均成交量增幅（倍）
-        - 最大成交量增幅（倍）
-        - 相关股票列表（按增幅排序）
-        """
+    def print_analysis_results(self, date, results):
+        """打印热门概念分析结果"""
         print(f"\n热门概念板块分析 ({date}):")
         print("-" * 80)
         
-        for concept in hot_concepts:
-            print(f"概念: {concept['concept_name']}")
-            print(f"成交量增加股票数: {concept['stock_count']}")
-            print(f"平均成交量增幅: {concept['avg_increase']:.2f}")
-            print(f"最大成交量增幅: {concept['max_increase']:.2f}")
+        concept_stats = pd.DataFrame.from_dict(results['concept_stats'], orient='index')
+        top_concepts = concept_stats.head(30)  # 获取前10个概念
+        
+        for concept_name, stats in top_concepts.iterrows():
+            print(f"概念: {concept_name}")
+            print(f"成交量增加股票数: {stats['stock_count']}")
+            print(f"平均成交量增幅: {stats['avg_increase']:.2f}")
+            print(f"最大成交量增幅: {stats['max_increase']:.2f}")
             print("-" * 80)
             
-            # 获取并打印该概念的具体股票信息
-            self.print_concept_stocks(date, concept['concept_name'])
+            # 打印该概念的具体股票信息
+            self.print_concept_stocks(date, concept_name)
 
     def print_concept_stocks(self, date, concept_name):
         """打印概念相关股票详情"""
@@ -348,8 +342,13 @@ def process_concept_volume(date):
     """
     try:
         analyzer = ConceptVolumeAnalyzer()
+        # 清空当天的数据
+        analyzer.clear_existing_data(date)
+        
         results = analyzer.analyze_concept_volume(date)
         if results:
+            # 保存分析结果
+            analyzer.save_analysis_results(results, date)
             analyzer.print_analysis_results(date, results)
             logger.info(f"成交量概念分析完成，数据已保存到数据库")
             return True
@@ -359,4 +358,4 @@ def process_concept_volume(date):
         return False
 
 if __name__ == "__main__":
-    process_concept_volume('2025-02-14')
+    process_concept_volume('2025-02-27')
