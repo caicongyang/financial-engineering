@@ -110,7 +110,7 @@ def process_daily_data(date):
 
     except Exception as e:
         print(f"An error occurred during daily processing: {e}")
-        sys.exit(1)
+        # sys.exit(1)
 
 def run_daily_job():
     """执行每日任务"""
