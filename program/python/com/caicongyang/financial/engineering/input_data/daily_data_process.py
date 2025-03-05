@@ -51,21 +51,21 @@ def process_daily_data(date):
     try:
 
 
-        # 1. 导入股票历史数据
-        print("\n--- Importing stock historical data ---")
-        stock_import.process_stock_data(date)
+        # # 1. 导入股票历史数据
+        # print("\n--- Importing stock historical data ---")
+        # stock_import.process_stock_data(date)
+        #
+        # # 2. 导入ETF历史数据
+        # print("\n--- Importing ETF historical data ---")
+        # etf_import.process_etf_data(date)
 
-        # 2. 导入ETF历史数据
-        print("\n--- Importing ETF historical data ---")
-        etf_import.process_etf_data(date)
-
-        # 3. 计算股票10日均线
-        print("\n--- Calculating stock 10-day average ---")
-        stock_avg.batch_calculate_10day_average([date])
-
-        # 4. 计算ETF10日均线
-        print("\n--- Calculating ETF 10-day average ---")
-        etf_avg.batch_calculate_10day_average([date])
+        # # 3. 计算股票10日均线
+        # print("\n--- Calculating stock 10-day average ---")
+        # stock_avg.batch_calculate_10day_average([date])
+        #
+        # # 4. 计算ETF10日均线
+        # print("\n--- Calculating ETF 10-day average ---")
+        # etf_avg.batch_calculate_10day_average([date])
 
         # 5. 检查股票成交量
         print("\n--- Checking stock volume increase ---")
