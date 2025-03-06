@@ -79,13 +79,13 @@ def process_daily_data(date):
         print("\n--- Checking stock limit  ---")
         stock_limit.batch_check_limit_stocks([date])
 
-        # 8. 检查股票资金流排名
-        print("\n--- Processing stock fund flow rank data ---")
-        fund_flow_rank.process_fund_flow_rank_data(date)
+        # # 8. 检查股票资金流排名
+        # print("\n--- Processing stock fund flow rank data ---")
+        # fund_flow_rank.process_fund_flow_rank_data(date)
 
-        # 9. 检查股票资金流
-        print("\n--- Processing stock fund flow data ---")
-        fund_flow.process_fund_flow_data(date)
+        # # 9. 检查股票资金流
+        # print("\n--- Processing stock fund flow data ---")
+        # fund_flow.process_fund_flow_data(date)
 
         # 10. 检查股票概念
         print("\n--- Processing stock concept data ---")
