@@ -48,69 +48,111 @@ def process_daily_data(date):
     """按顺序处理每日数据"""
     print(f"\n=== Starting daily data processing for {date} ===\n")
 
+    # 1. 导入股票历史数据
+    print("\n--- Importing stock historical data ---")
     try:
-
-
-        # 1. 导入股票历史数据
-        print("\n--- Importing stock historical data ---")
         stock_import.process_stock_data(date)
-        
-        # 2. 导入ETF历史数据
-        print("\n--- Importing ETF historical data ---")
-        etf_import.process_etf_data(date)
-
-        # # 3. 计算股票10日均线
-        # print("\n--- Calculating stock 10-day average ---")
-        # stock_avg.batch_calculate_10day_average([date])
-        #
-        # # 4. 计算ETF10日均线
-        # print("\n--- Calculating ETF 10-day average ---")
-        # etf_avg.batch_calculate_10day_average([date])
-
-        # 5. 检查股票成交量
-        print("\n--- Checking stock volume increase ---")
-        stock_volume.batch_check_volume_increase([date])
-
-        # 6. 检查ETF成交量
-        print("\n--- Checking ETF volume increase ---")
-        etf_volume.batch_check_volume_increase([date])
-
-        # 7. 检查股票成交量
-        print("\n--- Checking stock limit  ---")
-        stock_limit.batch_check_limit_stocks([date])
-
-        # # 8. 检查股票资金流排名
-        # print("\n--- Processing stock fund flow rank data ---")
-        # fund_flow_rank.process_fund_flow_rank_data(date)
-
-        # # 9. 检查股票资金流
-        # print("\n--- Processing stock fund flow data ---")
-        # fund_flow.process_fund_flow_data(date)
-
-        # 10. 检查股票概念
-        print("\n--- Processing stock concept data ---")
-        concept_import.process_daily_concept(date)
-
-        # 11. 分析成交量概念
-        print("\n--- Analyzing volume concepts ---")
-        analyze_concept_volume.process_concept_volume(date)
-        
-        # 12. 分析涨停概念
-        print("\n--- Analyzing limit up concepts ---")
-        analyze_limit_up_concept.process_limit_up_concept(date)
-
-        # # 11. 处理5分钟交易数据
-        # print("\n--- Processing stock 5-min trade data ---")
-        # min_trade_import.process_min_trade_data(date)
-
-
-        
-
-        print(f"\n=== Daily data processing completed for {date} ===\n")
-
+        print("Stock historical data import completed successfully")
     except Exception as e:
-        print(f"An error occurred during daily processing: {e}")
-        # sys.exit(1)
+        print(f"Error importing stock historical data: {e}")
+    
+    # 2. 导入ETF历史数据
+    print("\n--- Importing ETF historical data ---")
+    try:
+        etf_import.process_etf_data(date)
+        print("ETF historical data import completed successfully")
+    except Exception as e:
+        print(f"Error importing ETF historical data: {e}")
+
+    # # 3. 计算股票10日均线
+    # print("\n--- Calculating stock 10-day average ---")
+    # try:
+    #     stock_avg.batch_calculate_10day_average([date])
+    #     print("Stock 10-day average calculation completed successfully")
+    # except Exception as e:
+    #     print(f"Error calculating stock 10-day average: {e}")
+    #
+    # # 4. 计算ETF10日均线
+    # print("\n--- Calculating ETF 10-day average ---")
+    # try:
+    #     etf_avg.batch_calculate_10day_average([date])
+    #     print("ETF 10-day average calculation completed successfully")
+    # except Exception as e:
+    #     print(f"Error calculating ETF 10-day average: {e}")
+
+    # 5. 检查股票成交量
+    print("\n--- Checking stock volume increase ---")
+    try:
+        stock_volume.batch_check_volume_increase([date])
+        print("Stock volume increase check completed successfully")
+    except Exception as e:
+        print(f"Error checking stock volume increase: {e}")
+
+    # 6. 检查ETF成交量
+    print("\n--- Checking ETF volume increase ---")
+    try:
+        etf_volume.batch_check_volume_increase([date])
+        print("ETF volume increase check completed successfully")
+    except Exception as e:
+        print(f"Error checking ETF volume increase: {e}")
+
+    # 7. 检查股票成交量
+    print("\n--- Checking stock limit  ---")
+    try:
+        stock_limit.batch_check_limit_stocks([date])
+        print("Stock limit check completed successfully")
+    except Exception as e:
+        print(f"Error checking stock limit: {e}")
+
+    # # 8. 检查股票资金流排名
+    # print("\n--- Processing stock fund flow rank data ---")
+    # try:
+    #     fund_flow_rank.process_fund_flow_rank_data(date)
+    #     print("Stock fund flow rank data processing completed successfully")
+    # except Exception as e:
+    #     print(f"Error processing stock fund flow rank data: {e}")
+
+    # # 9. 检查股票资金流
+    # print("\n--- Processing stock fund flow data ---")
+    # try:
+    #     fund_flow.process_fund_flow_data(date)
+    #     print("Stock fund flow data processing completed successfully")
+    # except Exception as e:
+    #     print(f"Error processing stock fund flow data: {e}")
+
+    # 10. 检查股票概念
+    print("\n--- Processing stock concept data ---")
+    try:
+        concept_import.process_daily_concept(date)
+        print("Stock concept data processing completed successfully")
+    except Exception as e:
+        print(f"Error processing stock concept data: {e}")
+
+    # 11. 分析成交量概念
+    print("\n--- Analyzing volume concepts ---")
+    try:
+        analyze_concept_volume.process_concept_volume(date)
+        print("Volume concepts analysis completed successfully")
+    except Exception as e:
+        print(f"Error analyzing volume concepts: {e}")
+    
+    # 12. 分析涨停概念
+    print("\n--- Analyzing limit up concepts ---")
+    try:
+        analyze_limit_up_concept.process_limit_up_concept(date)
+        print("Limit up concepts analysis completed successfully")
+    except Exception as e:
+        print(f"Error analyzing limit up concepts: {e}")
+
+    # # 13. 处理5分钟交易数据
+    # print("\n--- Processing stock 5-min trade data ---")
+    # try:
+    #     min_trade_import.process_min_trade_data(date)
+    #     print("Stock 5-min trade data processing completed successfully")
+    # except Exception as e:
+    #     print(f"Error processing stock 5-min trade data: {e}")
+
+    print(f"\n=== Daily data processing completed for {date} ===\n")
 
 def run_daily_job():
     """执行每日任务"""
