@@ -25,6 +25,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import logging
 import argparse
+import time  # Add this import at the top
 
 # 配置日志
 logging.basicConfig(
@@ -154,17 +155,13 @@ class ConceptVolumeAnalyzer:
             print()
 
     def analyze_concept_volume(self, date):
-        """
-        概念成交量热点分析
+        """分析概念股成交量上涨的关联性，找出热门概念"""
+        start_time = time.time()
+        logger.info(f"开始分析 {date} 的概念股数据...")
         
-        实现步骤：
-        1. 获取数据：从数据库获取当日成交量增幅>100%的股票及其所属概念
-        2. 概念聚类：按概念分组统计股票数量、平均/最大成交量增幅
-        3. 结果过滤：保留3-50只股票的概念，避免无效数据
-        4. 结果排序：按平均成交量增幅降序排列
-        """
         try:
             # 1. 获取当日成交量增加的股票（增幅>50%）
+            query_start = time.time()
             query = text("""
                 SELECT v.stock_code, v.volume_increase_ratio, c.concept_name
                 FROM t_volume_increase v
@@ -174,12 +171,15 @@ class ConceptVolumeAnalyzer:
             """)
             
             df = pd.read_sql(query, self.engine, params={'date': date})
+            query_end = time.time()
+            logger.info(f"查询数据耗时: {query_end - query_start:.2f}秒, 获取到 {len(df)} 条记录")
             
             if df.empty:
                 logger.warning(f"No volume increase data found for date {date}")
                 return None
             
             # 2. 按概念分组统计
+            groupby_start = time.time()
             concept_stats = df.groupby('concept_name').agg({
                 'stock_code': 'count',
                 'volume_increase_ratio': ['mean', 'max']
@@ -187,12 +187,17 @@ class ConceptVolumeAnalyzer:
             
             # 重命名列
             concept_stats.columns = ['stock_count', 'avg_increase', 'max_increase']
+            groupby_end = time.time()
+            logger.info(f"概念分组统计耗时: {groupby_end - groupby_start:.2f}秒, 共 {len(concept_stats)} 个概念")
             
             # 3. 过滤无效概念
+            filter_start = time.time()
             concept_stats = concept_stats[
                 (concept_stats['stock_count'] > 5) &  # 至少5只股票
                 (concept_stats['stock_count'] < 50)   # 最多50只股票
             ]
+            filter_end = time.time()
+            logger.info(f"过滤概念耗时: {filter_end - filter_start:.2f}秒, 过滤后剩余 {len(concept_stats)} 个概念")
             
             if concept_stats.empty:
                 logger.warning(f"No valid concepts found for date {date}")
@@ -202,12 +207,18 @@ class ConceptVolumeAnalyzer:
             concept_stats = concept_stats.sort_values('avg_increase', ascending=False)
             
             # 5. 获取每个概念的具体股票
+            details_start = time.time()
             concept_details = {}
             for concept in concept_stats.index:
                 concept_stocks = df[df['concept_name'] == concept].sort_values(
                     'volume_increase_ratio', ascending=False
                 )
                 concept_details[concept] = concept_stocks[['stock_code', 'volume_increase_ratio']].to_dict('records')
+            details_end = time.time()
+            logger.info(f"获取概念详情耗时: {details_end - details_start:.2f}秒")
+            
+            end_time = time.time()
+            logger.info(f"分析 {date} 概念股数据总耗时: {end_time - start_time:.2f}秒")
             
             return {
                 'date': date,
@@ -220,22 +231,21 @@ class ConceptVolumeAnalyzer:
             raise
 
     def save_analysis_results(self, results, date):
-        """
-        保存分析结果到数据库
+        """保存分析结果到数据库"""
+        start_time = time.time()
+        logger.info(f"开始保存 {date} 的分析结果...")
         
-        存储结构：
-        1. 概念统计表(t_concept_volume_stats)：
-           - 概念名称 | 日期 | 股票数量 | 平均增幅 | 最大增幅
-           
-        2. 概念详情表(t_concept_volume_details)：
-           - 日期 | 概念名称 | 股票代码 | 成交量增幅
-        """
         try:
             if not results:
+                logger.warning("结果为空，无需保存")
                 return
                 
+            concept_count = len(results['concept_stats'])
+            logger.info(f"需要处理的概念数量: {concept_count}")
+            
             with self.engine.begin() as conn:
                 # 1. 保存概念统计数据
+                stats_start = time.time()
                 concept_stats_df = pd.DataFrame.from_dict(results['concept_stats'], orient='index')
                 concept_stats_df['trade_date'] = date
                 concept_stats_df.to_sql(
@@ -245,49 +255,147 @@ class ConceptVolumeAnalyzer:
                     index=True, 
                     index_label='concept_name'
                 )
+                stats_end = time.time()
+                logger.info(f"保存概念统计数据耗时: {stats_end - stats_start:.2f}秒, 共 {len(concept_stats_df)} 条记录")
                 
-                # 2. 保存概念详细数据
-                details_rows = []
-                for concept, stocks in results['concept_details'].items():
+                # 2. 获取所有需要的股票代码
+                all_stock_codes = set()
+                for stocks in results['concept_details'].values():
                     for stock in stocks:
-                        # 获取股票名称和涨跌幅
-                        stock_query = text("""
-                            SELECT stock_name, pct_chg, close
-                            FROM t_stock
-                            WHERE stock_code = :code
-                            AND trade_date = :date
-                        """)
-                        stock_info = pd.read_sql(
-                            stock_query, 
-                            conn, 
-                            params={'code': stock['stock_code'], 'date': date}
-                        )
+                        all_stock_codes.add(stock['stock_code'])
+                
+                # 3. 预先一次性查询所有股票数据
+                prefetch_start = time.time()
+                logger.info(f"预查询 {len(all_stock_codes)} 只股票的当日信息...")
+                
+                # 将所有股票代码转换为字符串列表，用于构建SQL查询
+                stock_codes_list = list(all_stock_codes)
+                # MySQL的IN操作符需要字符串格式，如：'000001','000002'
+                codes_str = "','".join(stock_codes_list)
+                codes_str = f"'{codes_str}'"
+                
+                # 一次查询获取所有股票信息
+                stock_query = text(f"""
+                    SELECT stock_code, stock_name, pct_chg, close
+                    FROM t_stock
+                    WHERE stock_code IN ({codes_str})
+                    AND trade_date = :date
+                """)
+                
+                stock_info_df = pd.read_sql(stock_query, conn, params={'date': date})
+                
+                # 转换为字典，以股票代码为键，方便快速查找
+                stock_info_map = {}
+                for _, row in stock_info_df.iterrows():
+                    stock_info_map[row['stock_code']] = {
+                        'stock_name': row['stock_name'],
+                        'pct_chg': row['pct_chg'],
+                        'close': row['close']
+                    }
+                
+                prefetch_end = time.time()
+                logger.info(f"预查询股票信息耗时: {prefetch_end - prefetch_start:.2f}秒, 获取到 {len(stock_info_map)} 只股票信息")
+                
+                # 4. 保存概念详细数据
+                details_start = time.time()
+                details_rows = []
+                
+                # 跟踪每个概念的处理进度
+                concept_counter = 0
+                total_stocks = sum(len(stocks) for stocks in results['concept_details'].values())
+                logger.info(f"需要处理的股票总数: {total_stocks}")
+                processed_stocks = 0
+                not_found_stocks = 0
+                
+                # 处理每个概念
+                for concept, stocks in results['concept_details'].items():
+                    concept_counter += 1
+                    concept_start = time.time()
+                    logger.info(f"处理概念[{concept_counter}/{concept_count}]: {concept}, 包含 {len(stocks)} 只股票")
+                    
+                    stock_counter = 0
+                    for stock in stocks:
+                        stock_counter += 1
+                        processed_stocks += 1
                         
-                        if not stock_info.empty:
-                            row = {
-                                'trade_date': date,
-                                'concept_name': concept,
-                                'stock_code': stock['stock_code'],
-                                'stock_name': stock_info['stock_name'].iloc[0],
-                                'volume_increase_ratio': stock['volume_increase_ratio'],
-                                'pct_chg': stock_info['pct_chg'].iloc[0],
-                                'close': stock_info['close'].iloc[0]
-                            }
-                            details_rows.append(row)
+                        if stock_counter % 20 == 0 or stock_counter == len(stocks):
+                            logger.info(f"  - 概念 {concept} 处理进度: {stock_counter}/{len(stocks)} 股票")
+                        
+                        try:
+                            stock_code = stock['stock_code']
+                            
+                            # 直接从内存中获取股票信息，而不是查询数据库
+                            if stock_code in stock_info_map:
+                                info = stock_info_map[stock_code]
+                                row = {
+                                    'trade_date': date,
+                                    'concept_name': concept,
+                                    'stock_code': stock_code,
+                                    'stock_name': info['stock_name'],
+                                    'volume_increase_ratio': stock['volume_increase_ratio'],
+                                    'pct_chg': info['pct_chg'],
+                                    'close': info['close']
+                                }
+                                details_rows.append(row)
+                            else:
+                                not_found_stocks += 1
+                                if not_found_stocks <= 10:  # 只记录前10个未找到的股票，避免日志过多
+                                    logger.warning(f"  未找到股票 {stock_code} 在 {date} 的信息")
+                        except Exception as e:
+                            logger.error(f"  处理股票 {stock_code} 时出错: {str(e)}")
+                    
+                    concept_time = time.time() - concept_start
+                    if concept_time > 3.0:  # 降低阈值，因为现在处理应该更快
+                        logger.warning(f"处理概念 {concept} 耗时较长: {concept_time:.2f}秒")
+                    
+                    # 每处理20个概念保存一次数据
+                    if concept_counter % 20 == 0 and details_rows:
+                        batch_save_start = time.time()
+                        batch_df = pd.DataFrame(details_rows)
+                        logger.info(f"中间保存 {len(batch_df)} 条详情记录...")
+                        
+                        try:
+                            batch_df.to_sql(
+                                't_concept_volume_details', 
+                                conn, 
+                                if_exists='append', 
+                                index=False
+                            )
+                            details_rows = []  # 清空已保存的记录
+                            logger.info(f"中间保存完成，耗时: {time.time() - batch_save_start:.2f}秒")
+                        except Exception as e:
+                            logger.error(f"中间保存数据时出错: {str(e)}")
                 
+                # 保存剩余记录
                 if details_rows:
+                    final_save_start = time.time()
+                    logger.info(f"最终保存 {len(details_rows)} 条详情记录...")
                     details_df = pd.DataFrame(details_rows)
-                    details_df.to_sql(
-                        't_concept_volume_details', 
-                        conn, 
-                        if_exists='append', 
-                        index=False
-                    )
+                    
+                    try:
+                        details_df.to_sql(
+                            't_concept_volume_details', 
+                            conn, 
+                            if_exists='append', 
+                            index=False
+                        )
+                        logger.info(f"最终保存完成，耗时: {time.time() - final_save_start:.2f}秒")
+                    except Exception as e:
+                        logger.error(f"最终保存数据时出错: {str(e)}")
                 
-                logger.info(f"Successfully saved analysis results for date {date}")
+                details_end = time.time()
+                if not_found_stocks > 0:
+                    logger.warning(f"有 {not_found_stocks} 只股票在 {date} 无交易数据")
+                    
+                logger.info(f"保存概念详情数据总耗时: {details_end - details_start:.2f}秒, 总共处理 {processed_stocks} 只股票")
+                
+                end_time = time.time()
+                logger.info(f"保存 {date} 分析结果总耗时: {end_time - start_time:.2f}秒")
                 
         except Exception as e:
-            logger.error(f"Error saving analysis results for date {date}: {e}")
+            import traceback
+            logger.error(f"保存数据时出错: {str(e)}")
+            logger.error(f"错误详情: {traceback.format_exc()}")
             raise
 
     def get_hot_concepts(self, date, limit=10):
@@ -358,4 +466,4 @@ def process_concept_volume(date):
         return False
 
 if __name__ == "__main__":
-    process_concept_volume('2025-04-08')
+    process_concept_volume('2025-04-09')

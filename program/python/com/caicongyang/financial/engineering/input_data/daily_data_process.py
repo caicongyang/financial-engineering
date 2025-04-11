@@ -96,7 +96,7 @@ def process_daily_data(date):
     except Exception as e:
         print(f"Error checking ETF volume increase: {e}")
 
-    # 7. 检查股票成交量
+    # 7. 检查股票涨停数据
     print("\n--- Checking stock limit  ---")
     try:
         stock_limit.batch_check_limit_stocks([date])
@@ -181,7 +181,7 @@ def main():
 if __name__ == "__main__":
     # 如果想立即执行一次，可以取消下面的注释
     # today = get_today_date()
-    today = "2025-04-07"
+    today = "2025-04-10"
     if is_trading_day(today):
         process_daily_data(today)
     
