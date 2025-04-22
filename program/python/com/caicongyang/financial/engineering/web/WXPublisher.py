@@ -474,41 +474,62 @@ class WXPublisher:
                 return match.group(1) if match else "未知IP"
             raise
 
-    async def push_recommendation(self) -> Dict[str, Any]:
-        """推送最新的投资建议到微信公众号"""
+    async def push_recommendation(self, content: str = None, title: str = None, digest: str = None, image_url: str = None) -> Dict[str, Any]:
+        """推送内容到微信公众号
+        
+        Args:
+            content: 要推送的内容，如果为None则从文件读取
+            title: 文章标题，如果为None则使用默认标题或从文件读取
+            digest: 文章摘要，如果为None则使用默认摘要或从文件读取
+            image_url: 封面图片URL，如果为None则使用默认图片
+
+        Returns:
+            Dict[str, Any]: 包含发布状态的字典
+        """
         try:
-            # 读取最新的投资建议
-            recommendation_path = os.path.join(self.data_path, "investment_recommendation.json")
-            
-            try:
-                with open(recommendation_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    logger.info(f"成功读取投资建议文件: {recommendation_path}")
-            except FileNotFoundError:
-                logger.error(f"未找到投资建议文件: {recommendation_path}")
-                return {
-                    "status": "error",
-                    "message": "未找到投资建议文件"
-                }
-            except json.JSONDecodeError:
-                logger.error(f"投资建议文件格式错误: {recommendation_path}")
-                return {
-                    "status": "error",
-                    "message": "投资建议文件格式错误"
-                }
-            
-            # 获取必要的字段
-            content = data.get('recommendation', '')
-            title = data.get('title', '投资建议分析报告')
-            digest = data.get('digest', '投资建议分析报告')
-            image_url = data.get('image_url', '')
+            # 如果没有直接提供内容，则从文件读取
+            if content is None:
+                # 读取最新的投资建议
+                recommendation_path = os.path.join(self.data_path, "investment_recommendation.json")
+                
+                try:
+                    with open(recommendation_path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                        logger.info(f"成功读取投资建议文件: {recommendation_path}")
+                except FileNotFoundError:
+                    logger.error(f"未找到投资建议文件: {recommendation_path}")
+                    return {
+                        "status": "error",
+                        "message": "未找到投资建议文件"
+                    }
+                except json.JSONDecodeError:
+                    logger.error(f"投资建议文件格式错误: {recommendation_path}")
+                    return {
+                        "status": "error",
+                        "message": "投资建议文件格式错误"
+                    }
+                
+                # 获取必要的字段
+                content = data.get('recommendation', '')
+                if title is None:
+                    title = data.get('title', '投资建议分析报告')
+                if digest is None:
+                    digest = data.get('digest', '投资建议分析报告')
+                if image_url is None:
+                    image_url = data.get('image_url', '')
+            else:
+                # 使用传入的参数或默认值
+                if title is None:
+                    title = '市场分析报告'
+                if digest is None:
+                    digest = '最新市场分析报告'
             
             # 检查内容是否为空
             if not content:
-                logger.error("投资建议内容为空")
+                logger.error("推送内容为空")
                 return {
                     "status": "error",
-                    "message": "投资建议内容为空"
+                    "message": "推送内容为空"
                 }
             
             # 预处理内容和字段
@@ -522,8 +543,10 @@ class WXPublisher:
             logger.info(f"处理后内容长度: {len(content)} 字符")
             
             # 上传图片
-            logger.info(f"准备上传图片: {image_url}")
-            media_id = await self.upload_image("https://gips0.baidu.com/it/u=1690853528,2506870245&fm=3028&app=3028&f=JPEG&fmt=auto?w=1024&h=1024")
+            default_img_url = "https://gips0.baidu.com/it/u=1690853528,2506870245&fm=3028&app=3028&f=JPEG&fmt=auto?w=1024&h=1024"
+            img_url = image_url if image_url else default_img_url
+            logger.info(f"准备上传图片: {img_url}")
+            media_id = await self.upload_image(img_url)
             logger.info(f"上传图片成功: {media_id}")
             
             # 推送到微信公众号
@@ -538,8 +561,8 @@ class WXPublisher:
             return result
             
         except Exception as error:
-            logger.error("推送投资建议时发生错误: %s", error)
+            logger.error("推送内容时发生错误: %s", error)
             return {
                 "status": "error",
-                "message": f"推送投资建议失败: {str(error)}"
+                "message": f"推送内容失败: {str(error)}"
             } 

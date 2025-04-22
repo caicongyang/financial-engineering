@@ -5,6 +5,13 @@ from deepseek_chat import DeepSeekChat
 from datetime import datetime, timedelta
 import json
 from db_utils import save_report_to_db, init_db
+# 导入WXPublisher类用于微信公众号发布
+import sys
+
+# 直接导入WXPublisher
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, current_dir)
+from WXPublisher import WXPublisher
 
 # 初始化数据库
 init_db()
@@ -412,12 +419,13 @@ def save_market_analysis_to_db(content: str, data_summary=None, target_date: str
         print(f"保存市场分析到数据库时出错: {e}")
         return None
 
-def main(target_date: str = None):
+def main(target_date: str = None, should_publish_wechat: bool = False):
     """
     主函数，执行市场数据分析流程
     
     Args:
         target_date: 目标日期，格式为YYYY-MM-dd。如果不提供，则使用当前日期
+        should_publish_wechat: 是否发布到微信公众号
     """
     try:
         # 如果未提供日期，使用当前日期
@@ -557,6 +565,34 @@ def main(target_date: str = None):
             md_file = save_to_markdown(result, target_date=target_date)
             if md_file:
                 print(f"分析报告已同时保存到本地文件: {md_file}")
+                
+            # 如果需要发布到微信公众号
+            if should_publish_wechat:
+                try:
+                    print("开始发布到微信公众号...")
+                    # 创建微信发布器实例
+                    wx_publisher = WXPublisher()
+                    
+                    # 准备发布参数
+                    title = f"大盘市场分析报告 {target_date}"
+                    # 提取报告摘要作为文章摘要
+                    # 提取报告前100个字符作为摘要
+                    digest = f"大盘市场分析报告 {target_date}"
+                    
+                    # 异步发布到微信公众号
+                    import asyncio
+                    publish_result = asyncio.run(wx_publisher.push_recommendation(
+                        content=result,
+                        title=title,
+                        digest=digest
+                    ))
+                    
+                    if publish_result and publish_result.get('status') != 'error':
+                        print(f"微信公众号发布成功: {json.dumps(publish_result, ensure_ascii=False)}")
+                    else:
+                        print(f"微信公众号发布失败: {json.dumps(publish_result, ensure_ascii=False)}")
+                except Exception as e:
+                    print(f"微信公众号发布过程中发生错误: {str(e)}")
             
             # 打印分析结果
             print("\n" + "="*50)
@@ -571,5 +607,5 @@ def main(target_date: str = None):
         print(f"程序运行出错: {str(e)}")
 
 if __name__ == "__main__":
-    
-        main("2025-04-18") 
+   
+    main("2025-04-22", True) 
