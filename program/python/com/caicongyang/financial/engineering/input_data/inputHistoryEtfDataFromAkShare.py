@@ -240,7 +240,7 @@ if __name__ == "__main__":
     try:
         # 设置要处理的日期列表
         dates_to_process = [
-            '2025-02-17'
+            '2025-04-22'
         ]
         
         logger.info(f"Starting batch processing for {len(dates_to_process)} days")
