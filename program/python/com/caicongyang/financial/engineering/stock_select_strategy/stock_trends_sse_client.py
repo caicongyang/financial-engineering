@@ -76,6 +76,11 @@ from redis.asyncio import Redis
 import time
 import pandas as pd
 from sqlalchemy import create_engine
+import os
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))))), '.env'))
 
 # 配置日志
 logging.basicConfig(
@@ -91,10 +96,10 @@ class StockTrendsSSEClient:
         self.current_server_index = 0
         
         # Redis配置
-        self.redis_host = '43.133.13.36'
-        self.redis_port = 3373
-        self.redis_db = 0
-        self.redis_password = '24777365ccyCCY!'
+        self.redis_host = os.getenv('REDIS_HOST', '43.133.13.36')
+        self.redis_port = int(os.getenv('REDIS_PORT', '3373'))
+        self.redis_db = int(os.getenv('REDIS_DB', '0'))
+        self.redis_password = os.getenv('REDIS_PASSWORD', '24777365ccyCCY!')
         self.redis: Redis = None
         
         # 通用参数
@@ -144,11 +149,11 @@ class StockTrendsSSEClient:
         
         # MySQL配置
         self.mysql_config = {
-            'host': '43.133.13.36',
-            'port': 3333,
-            'user': 'root',
-            'password': 'root',
-            'db': 'stock'
+            'host': os.getenv('DB_HOST'),
+            'port': int(os.getenv('DB_PORT')),
+            'user': os.getenv('DB_USER'),
+            'password': os.getenv('DB_PASSWORD'),
+            'db': os.getenv('DB_NAME')
         }
         
         # 企业微信机器人配置 - 改为列表存储多个webhook
@@ -443,7 +448,7 @@ class StockTrendsSSEClient:
             raise
 
     async def init_concept_stocks(self):
-        """初始化概念股��据到Redis"""
+        """初始化概念股数据到Redis"""
         try:
             engine = create_engine(
                 f"mysql+pymysql://{self.mysql_config['user']}:{self.mysql_config['password']}@"

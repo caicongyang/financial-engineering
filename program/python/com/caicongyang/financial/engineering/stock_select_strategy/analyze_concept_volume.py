@@ -26,6 +26,11 @@ from datetime import datetime, timedelta
 import logging
 import argparse
 import time  # Add this import at the top
+import os
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))))), '.env'))
 
 # 配置日志
 logging.basicConfig(
@@ -38,11 +43,11 @@ class ConceptVolumeAnalyzer:
     def __init__(self):
         # 数据库连接信息
         self.mysql_config = {
-            'user': 'root',
-            'password': 'root',
-            'host': '43.133.13.36',
-            'port': '3333',
-            'db': 'stock'
+            'user': os.getenv('DB_USER'),
+            'password': os.getenv('DB_PASSWORD'),
+            'host': os.getenv('DB_HOST'),
+            'port': os.getenv('DB_PORT'),
+            'db': os.getenv('DB_NAME')
         }
         
         # 创建数据库连接

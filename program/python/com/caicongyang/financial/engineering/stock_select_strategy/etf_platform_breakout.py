@@ -31,6 +31,11 @@ import numpy as np
 import datetime
 import logging
 from sqlalchemy import create_engine
+import os
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))))), '.env'))
 
 # 配置日志输出格式
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -44,11 +49,11 @@ class EtfPlatformBreakoutStrategy:
         self.atr_window = 30  # 新增ATR窗口参数
         
         # 数据库连接配置
-        self.mysql_user = 'root'
-        self.mysql_password = 'root'
-        self.mysql_host = '43.133.13.36'
-        self.mysql_port = '3333'
-        self.mysql_db = 'stock'
+        self.mysql_user = os.getenv('DB_USER')
+        self.mysql_password = os.getenv('DB_PASSWORD')
+        self.mysql_host = os.getenv('DB_HOST')
+        self.mysql_port = os.getenv('DB_PORT')
+        self.mysql_db = os.getenv('DB_NAME')
         # 创建数据库连接引擎
         self.engine = create_engine(
             f'mysql+pymysql://{self.mysql_user}:{self.mysql_password}@'

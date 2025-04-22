@@ -8,13 +8,18 @@
 from sqlalchemy import create_engine, text
 import pandas as pd
 from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))))), '.env'))
 
 # 数据库连接信息
-mysql_user = 'root'
-mysql_password = 'root'
-mysql_host = '43.133.13.36'
-mysql_port = '3333'
-mysql_db = 'stock'
+mysql_user = os.getenv('DB_USER')
+mysql_password = os.getenv('DB_PASSWORD')
+mysql_host = os.getenv('DB_HOST')
+mysql_port = os.getenv('DB_PORT')
+mysql_db = os.getenv('DB_NAME')
 source_table = 't_stock'  # 股票数据表
 target_table = 't_volume_increase'  # 股票成交量增加表
 
