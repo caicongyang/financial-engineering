@@ -16,14 +16,15 @@ from WXPublisher import WXPublisher
 # 初始化数据库
 init_db()
 
+
 def analyze_market_data(chat: DeepSeekChat, index_data: pd.DataFrame, gdp: pd.DataFrame = None,
-                        pmi: pd.DataFrame = None, cpi: pd.DataFrame = None, 
+                        pmi: pd.DataFrame = None, cpi: pd.DataFrame = None,
                         huilv: pd.DataFrame = None, sp500: pd.DataFrame = None,
                         lhb: pd.DataFrame = None, board: pd.DataFrame = None,
-                        market: pd.DataFrame = None, 
+                        market: pd.DataFrame = None,
                         fund_flow: pd.DataFrame = None) -> str:
     """分析大盘数据"""
-    
+
     try:
         # 构建分析请求，包含角色提示
         analysis_request = f"""# Role: 大盘趋势分析师
@@ -98,7 +99,7 @@ def analyze_market_data(chat: DeepSeekChat, index_data: pd.DataFrame, gdp: pd.Da
 ## Initialization
 作为大盘趋势分析师，你必须遵守上述Rules，按照Workflows执行任务。
 
-请以Markdown格式输出你的分析报告，使用适当的标题、列表、表格和强调语法，确保报告结构清晰、易于阅读。
+请以Markdown格式（不要以```markdown ```包裹文档内容）输出你的分析报告，使用适当的标题、列表、表格和强调语法，确保报告结构清晰、易于阅读。
 
 以下是各项市场数据：
 
@@ -153,15 +154,16 @@ def analyze_market_data(chat: DeepSeekChat, index_data: pd.DataFrame, gdp: pd.Da
 
 
 """
-        
+
         # 发送请求并获取分析结果
         result = chat.simple_chat(analysis_request)
-        
+
         # 返回分析结果
         return result
-        
+
     except Exception as e:
         return f"分析过程中发生错误: {str(e)}"
+
 
 def get_market_index_data(days: int = 30, target_date: str = None) -> pd.DataFrame:
     """获取市场指数数据，默认获取最近30天的数据
@@ -177,31 +179,32 @@ def get_market_index_data(days: int = 30, target_date: str = None) -> pd.DataFra
             target_datetime = datetime.strptime(target_date, "%Y-%m-%d")
         else:
             target_datetime = datetime.now()
-            
+
         # 获取上证指数数据
         df_sh = ak.stock_zh_index_daily(symbol="sh000001")
         # 获取深证成指数据
         df_sz = ak.stock_zh_index_daily(symbol="sz399001")
         # 获取创业板指数据
         df_cyb = ak.stock_zh_index_daily(symbol="sz399006")
-        
+
         # 限制数据范围为最近n天
         df_sh = df_sh.tail(days)
         df_sz = df_sz.tail(days)
         df_cyb = df_cyb.tail(days)
-        
+
         # 添加指数名称列
         df_sh['index_name'] = '上证指数'
         df_sz['index_name'] = '深证成指'
         df_cyb['index_name'] = '创业板指'
-        
+
         # 合并数据
         df_combined = pd.concat([df_sh, df_sz, df_cyb])
-        
+
         return df_combined
     except Exception as e:
         print(f"获取市场指数数据失败: {e}")
         return None
+
 
 def get_gdp_data(target_date: str = None) -> pd.DataFrame:
     """获取GDP指数数据
@@ -217,6 +220,7 @@ def get_gdp_data(target_date: str = None) -> pd.DataFrame:
         print(f"获取GDP数据失败: {e}")
         return None
 
+
 def get_pmi_data(target_date: str = None) -> pd.DataFrame:
     """获取PMI指数数据
     
@@ -230,6 +234,7 @@ def get_pmi_data(target_date: str = None) -> pd.DataFrame:
     except Exception as e:
         print(f"获取PMI数据失败: {e}")
         return None
+
 
 def get_cpi_data(target_date: str = None) -> pd.DataFrame:
     """获取CPI指数数据
@@ -245,6 +250,7 @@ def get_cpi_data(target_date: str = None) -> pd.DataFrame:
         print(f"获取CPI数据失败: {e}")
         return None
 
+
 def get_exchange_rate(target_date: str = None) -> pd.DataFrame:
     """获取人民币/美元汇率数据
     
@@ -259,6 +265,7 @@ def get_exchange_rate(target_date: str = None) -> pd.DataFrame:
         print(f"获取汇率数据失败: {e}")
         return None
 
+
 def get_sp500_data(target_date: str = None) -> pd.DataFrame:
     """获取标普500指数数据
     
@@ -269,8 +276,8 @@ def get_sp500_data(target_date: str = None) -> pd.DataFrame:
         # 获取标普500指数数据 和 纳指100指数数据
         print("获取标普500指数数据...")
         df = ak.index_us_stock_sina(symbol=".INX")
-        ndxDf =ak.index_us_stock_sina(symbol=".NDX ")
-         # 添加指数名称列
+        ndxDf = ak.index_us_stock_sina(symbol=".NDX ")
+        # 添加指数名称列
         df['index_name'] = '标普500'
         ndxDf['index_name'] = '纳指100'
         print(df)
@@ -281,6 +288,7 @@ def get_sp500_data(target_date: str = None) -> pd.DataFrame:
     except Exception as e:
         print(f"获取标普500指数数据失败: {e}")
         return None
+
 
 def get_dragon_tiger_list(target_date: str = None) -> pd.DataFrame:
     """获取龙虎榜数据
@@ -296,13 +304,14 @@ def get_dragon_tiger_list(target_date: str = None) -> pd.DataFrame:
             current_date = target_date.replace("-", "")
         else:
             current_date = datetime.now().strftime("%Y%m%d")
-            
+
         # 龙虎榜数据
         df = ak.stock_lhb_detail_em(start_date=current_date, end_date=current_date)
         return df
     except Exception as e:
         print(f"获取龙虎榜数据失败: {e}")
         return None
+
 
 def get_sector_data(target_date: str = None) -> pd.DataFrame:
     """获取板块数据
@@ -315,17 +324,18 @@ def get_sector_data(target_date: str = None) -> pd.DataFrame:
         df_industry = ak.stock_sector_spot()
         # 获取概念板块数据
         df_concept = ak.stock_board_concept_name_em()
-        
+
         # 合并数据
         df_combined = pd.concat([
             df_industry.assign(板块类型='行业板块'),
             df_concept.assign(板块类型='概念板块')
         ])
-        
+
         return df_combined
     except Exception as e:
         print(f"获取板块数据失败: {e}")
         return None
+
 
 def get_market_effect(target_date: str = None) -> pd.DataFrame:
     """获取赚钱效应数据
@@ -338,12 +348,13 @@ def get_market_effect(target_date: str = None) -> pd.DataFrame:
         print("获取市场活跃度数据...")
         effect_df = ak.stock_market_activity_legu()
         print(effect_df)
-    
+
         return effect_df
-        
+
     except Exception as e:
         print(f"获取赚钱效应数据失败: {e}")
         return None
+
 
 def get_concept_fund_flow(target_date: str = None) -> pd.DataFrame:
     """获取概念板块资金流入流出数据
@@ -359,6 +370,7 @@ def get_concept_fund_flow(target_date: str = None) -> pd.DataFrame:
         print(f"获取概念板块资金流向数据失败: {e}")
         return None
 
+
 def save_to_markdown(content: str, target_date: str = None) -> str:
     """将分析结果保存为Markdown文件
     
@@ -373,19 +385,20 @@ def save_to_markdown(content: str, target_date: str = None) -> str:
             report_date = target_date.replace("-", "")
         else:
             report_date = datetime.now().strftime("%Y%m%d")
-            
+
         # 创建文件名，包含日期时间
         now = datetime.now().strftime("%H%M%S")
         filename = f"market_analysis_{report_date}_{now}.md"
-        
+
         # 写入文件
         with open(filename, "w", encoding="utf-8") as f:
             f.write(content)
-        
+
         return filename
     except Exception as e:
         print(f"保存Markdown文件时出错: {e}")
         return None
+
 
 def save_market_analysis_to_db(content: str, data_summary=None, target_date: str = None) -> str:
     """将市场分析结果保存到MySQL数据库
@@ -401,9 +414,9 @@ def save_market_analysis_to_db(content: str, data_summary=None, target_date: str
     try:
         # 使用提供的日期或当前日期
         report_date = target_date if target_date else datetime.now().strftime("%Y-%m-%d")
-        
+
         title = f"大盘分析报告 {report_date}"
-        
+
         # 保存到数据库
         report_id = save_report_to_db(
             report_type='market',
@@ -413,11 +426,12 @@ def save_market_analysis_to_db(content: str, data_summary=None, target_date: str
             related_data=data_summary,  # 现在可以直接传入字典，db_utils会处理JSON转换
             tags='大盘,市场分析'
         )
-        
+
         return report_id
     except Exception as e:
         print(f"保存市场分析到数据库时出错: {e}")
         return None
+
 
 def main(target_date: str = None, should_publish_wechat: bool = False):
     """
@@ -431,94 +445,94 @@ def main(target_date: str = None, should_publish_wechat: bool = False):
         # 如果未提供日期，使用当前日期
         if target_date is None:
             target_date = datetime.now().strftime("%Y-%m-%d")
-            
+
         print(f"使用分析日期: {target_date}")
-            
+
         # 初始化 DeepSeekChat，只传入必要参数
         api_key = os.environ.get("LLM_API_KEY", "")
         base_url = os.environ.get("LLM_BASE_URL", "")
         print(f"使用 API 密钥: {api_key}")
         print(f"使用基础 URL: {base_url}")
-        
+
         # 去掉 proxies 参数，只使用必要的参数
         chat = DeepSeekChat(api_key=api_key, base_url=base_url)
-        
+
         print("正在获取市场数据...")
-        
+
         # 获取市场指数数据
         print("获取市场指数数据...")
         index_data = get_market_index_data(days=30, target_date=target_date)
         print(index_data)
         if index_data is None:
             print("获取市场指数数据失败，将使用本地数据（如果有）")
-        
+
         # 获取GDP数据
         print("获取GDP数据...")
         gdp = get_gdp_data(target_date=target_date)
         print(gdp)
         if gdp is None:
             print("获取GDP数据失败")
-        
+
         # 获取PMI数据
         print("获取PMI数据...")
         pmi = get_pmi_data(target_date=target_date)
         print(pmi)
         if pmi is None:
             print("获取PMI数据失败")
-        
+
         # 获取CPI数据
         print("获取CPI数据...")
         cpi = get_cpi_data(target_date=target_date)
         print(cpi)
         if cpi is None:
             print("获取CPI数据失败")
-        
+
         # 获取汇率数据
         print("获取汇率数据...")
         huilv = get_exchange_rate(target_date=target_date)
         print(huilv)
         if huilv is None:
             print("获取汇率数据失败")
-        
+
         # 获取标普500指数数据
         print("获取标普500指数数据...")
         sp500 = get_sp500_data(target_date=target_date)
         print(sp500)
         if sp500 is None:
             print("获取标普500指数数据失败")
-        
+
         # 获取概念板块资金流向数据
         print("获取概念板块资金流向数据...")
         fund_flow = get_concept_fund_flow(target_date=target_date)
         print(fund_flow)
         if fund_flow is None:
             print("获取概念板块资金流向数据失败")
-        
+
         # 获取板块数据
         print("获取板块数据...")
         board = get_sector_data(target_date=target_date)
         print(board)
         if board is None:
             print("获取板块数据失败")
-        
+
         # 获取龙虎榜数据
         print("获取龙虎榜数据...")
         lhb = get_dragon_tiger_list(target_date=target_date)
         print(lhb)
         if lhb is None:
             print("获取龙虎榜数据失败")
-        
+
         # 获取赚钱效应数据
         print("获取赚钱效应数据...")
         market = get_market_effect(target_date=target_date)
         print(market)
         if market is None:
             print("获取赚钱效应数据失败")
-        
+
         if index_data is not None:
             # 打印数据基本信息
             print(f"获取到 {len(index_data)} 条市场指数数据")
-            
+
             # 分析大盘数据
             print("开始分析大盘数据...")
             result = analyze_market_data(
@@ -534,7 +548,7 @@ def main(target_date: str = None, should_publish_wechat: bool = False):
                 market=market,
                 fund_flow=fund_flow
             )
-            
+
             # 准备数据摘要
             data_summary = {
                 "analysis_date": target_date,
@@ -550,35 +564,38 @@ def main(target_date: str = None, should_publish_wechat: bool = False):
                 "fund_flow_data_available": fund_flow is not None,
                 "analysis_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "main_indices": {
-                    "上证指数": index_data[index_data['index_name'] == '上证指数'].iloc[-1]['close'] if index_data is not None else None,
-                    "深证成指": index_data[index_data['index_name'] == '深证成指'].iloc[-1]['close'] if index_data is not None else None,
-                    "创业板指": index_data[index_data['index_name'] == '创业板指'].iloc[-1]['close'] if index_data is not None else None
+                    "上证指数": index_data[index_data['index_name'] == '上证指数'].iloc[-1][
+                        'close'] if index_data is not None else None,
+                    "深证成指": index_data[index_data['index_name'] == '深证成指'].iloc[-1][
+                        'close'] if index_data is not None else None,
+                    "创业板指": index_data[index_data['index_name'] == '创业板指'].iloc[-1][
+                        'close'] if index_data is not None else None
                 }
             }
-            
+
             # 保存分析结果到MySQL数据库
             report_id = save_market_analysis_to_db(result, data_summary, target_date=target_date)
             if report_id:
                 print(f"分析报告已保存到MySQL数据库，ID: {report_id}")
-            
+
             # 同时也保存到本地文件（可选）
             md_file = save_to_markdown(result, target_date=target_date)
             if md_file:
                 print(f"分析报告已同时保存到本地文件: {md_file}")
-                
+
             # 如果需要发布到微信公众号
             if should_publish_wechat:
                 try:
                     print("开始发布到微信公众号...")
                     # 创建微信发布器实例
                     wx_publisher = WXPublisher()
-                    
+
                     # 准备发布参数
                     title = f"大盘市场分析报告 {target_date}"
                     # 提取报告摘要作为文章摘要
                     # 提取报告前100个字符作为摘要
                     digest = f"大盘市场分析报告 {target_date}"
-                    
+
                     # 异步发布到微信公众号
                     import asyncio
                     publish_result = asyncio.run(wx_publisher.push_recommendation(
@@ -586,26 +603,26 @@ def main(target_date: str = None, should_publish_wechat: bool = False):
                         title=title,
                         digest=digest
                     ))
-                    
+
                     if publish_result and publish_result.get('status') != 'error':
                         print(f"微信公众号发布成功: {json.dumps(publish_result, ensure_ascii=False)}")
                     else:
                         print(f"微信公众号发布失败: {json.dumps(publish_result, ensure_ascii=False)}")
                 except Exception as e:
                     print(f"微信公众号发布过程中发生错误: {str(e)}")
-            
+
             # 打印分析结果
-            print("\n" + "="*50)
+            print("\n" + "=" * 50)
             print(f"大盘分析报告 {target_date}")
-            print("="*50 + "\n")
+            print("=" * 50 + "\n")
             print(result)
-            print("\n" + "="*50)
+            print("\n" + "=" * 50)
         else:
             print("无法获取足够的市场数据进行分析")
-        
+
     except Exception as e:
         print(f"程序运行出错: {str(e)}")
 
+
 if __name__ == "__main__":
-   
-    main("2025-04-22", True) 
+    main("2025-04-22", True)
