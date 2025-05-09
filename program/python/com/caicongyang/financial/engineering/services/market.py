@@ -625,4 +625,4 @@ def main(target_date: str = None, should_publish_wechat: bool = False):
 
 
 if __name__ == "__main__":
-    main("2025-04-22", True)
+    main("2025-04-23", True)
