@@ -8,7 +8,7 @@
 from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from com.caicongyang.financial.engineering.web.stock_chat_service import StockChatService
+from com.caicongyang.financial.engineering.services.stock_chat_service import StockChatService
 
 # 请求/响应模型
 class MessageRequest(BaseModel):

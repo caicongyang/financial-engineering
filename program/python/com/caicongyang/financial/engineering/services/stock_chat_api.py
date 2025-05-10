@@ -17,7 +17,7 @@ python_root = os.path.join(project_root, "program", "python")
 sys.path.append(python_root)
 
 # 导入服务类
-from com.caicongyang.financial.engineering.web.stock_chat_service import StockChatService
+from com.caicongyang.financial.engineering.services.stock_chat_service import StockChatService
 from com.caicongyang.financial.engineering.services.chat_api_service import ChatAPIService
 from com.caicongyang.financial.engineering.services.app_factory import AppFactory
 

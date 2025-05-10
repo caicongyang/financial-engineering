@@ -40,8 +40,8 @@ class StockChatService:
             api_key: API密钥
             base_url: API基础URL，默认为DeepSeek API
         """
-        self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
-        self.base_url = base_url or "https://api.deepseek.com/v1"
+        self.api_key = api_key or os.getenv("LLM_API_KEY")
+        self.base_url = base_url or os.getenv("LLM_BASE_URL")
         
         # 初始化OpenAI客户端
         self.client = OpenAI(
