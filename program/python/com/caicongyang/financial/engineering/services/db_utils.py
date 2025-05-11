@@ -3,13 +3,17 @@ from datetime import datetime
 import pandas as pd
 import json
 from sqlalchemy import create_engine, text, MetaData, Table, Column, Integer, String, DateTime, Text, UniqueConstraint
+from dotenv import load_dotenv
 
-# 数据库连接信息，与check_stock_limit.py保持一致
-mysql_user = 'root'
-mysql_password = 'root'
-mysql_host = '43.133.13.36'
-mysql_port = '3333'
-mysql_db = 'stock'
+# 加载环境变量
+load_dotenv()
+
+# 数据库连接信息
+mysql_user = os.getenv('DB_USER')
+mysql_password = os.getenv('DB_PASSWORD')
+mysql_host = os.getenv('DB_HOST')
+mysql_port = os.getenv('DB_PORT')
+mysql_db = os.getenv('DB_NAME')
 
 # 报告表名
 REPORTS_TABLE = 't_analysis_reports'
