@@ -24,6 +24,7 @@ from com.caicongyang.financial.engineering.services.data_processing_service impo
 from com.caicongyang.financial.engineering.services.scheduler_service import SchedulerService
 from com.caicongyang.financial.engineering.services.chat_api_service import ChatAPIService
 from com.caicongyang.financial.engineering.services.data_api_service import DataAPIService
+from com.caicongyang.financial.engineering.services.analysis_api_service import AnalysisAPIService
 from com.caicongyang.financial.engineering.services.app_factory import AppFactory
 
 # 加载环境变量
@@ -43,6 +44,7 @@ def create_application():
     # 创建API服务
     chat_api = ChatAPIService(chat_service)
     data_api = DataAPIService(data_service, scheduler_service)
+    analysis_api = AnalysisAPIService()
     
     # 创建FastAPI应用
     app = AppFactory.create_app(
@@ -54,6 +56,7 @@ def create_application():
     # 注册路由
     app.include_router(chat_api.router)
     app.include_router(data_api.router)
+    app.include_router(analysis_api.router)
     
     return app, scheduler_service
 

@@ -160,6 +160,59 @@ def get_reports_by_code(code, limit=10):
     columns = result.keys()
     return [dict(zip(columns, row)) for row in rows]
 
+def get_latest_reports_with_content(report_type, limit=1):
+    """获取指定类型的最新报告，包含完整内容
+    
+    Args:
+        report_type: 报告类型 ('market' 或 'stock')
+        limit: 返回的报告数量
+        
+    Returns:
+        reports: 报告列表，包含完整内容
+    """
+    query = text(f"""
+    SELECT * FROM {REPORTS_TABLE}
+    WHERE report_type = :report_type
+    ORDER BY created_at DESC
+    LIMIT :limit
+    """)
+    
+    with engine.connect() as conn:
+        result = conn.execute(query, {'report_type': report_type, 'limit': limit})
+        rows = result.fetchall()
+    
+    # 转换为字典列表
+    columns = result.keys()
+    return [dict(zip(columns, row)) for row in rows]
+
+def search_reports_by_title(keyword, limit=20):
+    """根据标题关键字搜索报告
+    
+    Args:
+        keyword: 要搜索的关键字
+        limit: 返回的最大结果数量
+        
+    Returns:
+        reports: 匹配的报告列表
+    """
+    # 使用LIKE语句进行模糊匹配
+    query = text(f"""
+    SELECT * FROM {REPORTS_TABLE}
+    WHERE title LIKE :keyword
+    ORDER BY created_at DESC
+    LIMIT :limit
+    """)
+    
+    with engine.connect() as conn:
+        # 添加通配符以进行模糊匹配
+        search_pattern = f"%{keyword}%"
+        result = conn.execute(query, {'keyword': search_pattern, 'limit': limit})
+        rows = result.fetchall()
+    
+    # 转换为字典列表
+    columns = result.keys()
+    return [dict(zip(columns, row)) for row in rows]
+
 if __name__ == "__main__":
     # 初始化数据库
     init_db()
