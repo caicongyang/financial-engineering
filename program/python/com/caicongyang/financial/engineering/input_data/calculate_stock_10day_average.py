@@ -23,6 +23,8 @@ mysql_db = os.getenv('DB_NAME')
 source_table = 't_stock'
 target_table = 't_stock_10day_avg'
 
+print(mysql_port)
+
 # 创建数据库连接
 engine = create_engine(f'mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_db}')
 

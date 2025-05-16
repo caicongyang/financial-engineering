@@ -1,24 +1,23 @@
-import os
 import pandas as pd
 import akshare as ak
-from deepseek_chat import DeepSeekChat
 from datetime import datetime, timedelta
-import json
-from db_utils import save_report_to_db, init_db, engine
-from sqlalchemy import text
+from com.caicongyang.financial.engineering.services.db_utils import save_report_to_db, init_db, engine
+from com.caicongyang.financial.engineering.services.deepseek_chat import DeepSeekChat
 
 # 初始化数据库
 init_db()
 
-def analyze_stock_data(chat: DeepSeekChat, df0: pd.DataFrame, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame) -> str:
+
+def analyze_stock_data(chat: DeepSeekChat, df0: pd.DataFrame, df1: pd.DataFrame, df2: pd.DataFrame,
+                       df3: pd.DataFrame) -> str:
     """分析股票数据
     
     Args:
         chat: DeepSeekChat实例
         df_list: 包含3天数据的DataFrame列表
     """
-    
-    try:        
+
+    try:
         # 构建分析请求，包含角色提示
         analysis_request = f"""
 # Role: 主力动向分析师
@@ -78,15 +77,16 @@ def analyze_stock_data(chat: DeepSeekChat, df0: pd.DataFrame, df1: pd.DataFrame,
 你帮我分析一下这只股票是否存在主力操盘的行为，如果是，那么主力是如何操作的，以及接下来的走势如何？
 必须根据投喂你的数据进行分析，禁止自己编造假数据。描述当天的股价走势，自证没有虚构数据。你的观点需要数据支撑。
 """
-        
+
         # 发送请求并获取分析结果
         result = chat.simple_chat(analysis_request)
-        
+
         # 返回分析结果
         return result
-        
+
     except Exception as e:
         return f"分析过程中发生错误: {str(e)}"
+
 
 def save_to_markdown(content: str, stock_code: str) -> str:
     """将分析结果保存为Markdown文件"""
@@ -94,15 +94,16 @@ def save_to_markdown(content: str, stock_code: str) -> str:
         # 创建文件名，包含股票代码和当前日期时间
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{stock_code}_analysis_{now}.md"
-        
+
         # 写入文件
         with open(filename, "w", encoding="utf-8") as f:
             f.write(content)
-        
+
         return filename
     except Exception as e:
         print(f"保存Markdown文件时出错: {e}")
         return None
+
 
 def save_stock_analysis_to_db(content: str, stock_code: str, stock_data_summary=None) -> str:
     """将股票分析结果保存到MySQL数据库
@@ -119,11 +120,11 @@ def save_stock_analysis_to_db(content: str, stock_code: str, stock_data_summary=
         # 获取报告标题 (默认取内容的第一行，通常是标题)
         title_line = content.strip().split('\n')[0]
         title = title_line.strip('# ')
-        
+
         # 如果没有找到合适的标题，使用默认标题
         if not title or len(title) < 2:
             title = f"股票 {stock_code} 分析报告 {datetime.now().strftime('%Y-%m-%d')}"
-        
+
         # 保存到数据库
         report_id = save_report_to_db(
             report_type='stock',
@@ -133,79 +134,85 @@ def save_stock_analysis_to_db(content: str, stock_code: str, stock_data_summary=
             related_data=stock_data_summary,  # 直接传入字典，db_utils会处理JSON转换
             tags=f'股票,资金流向,{stock_code}'
         )
-        
+
         return report_id
     except Exception as e:
         print(f"保存股票分析到数据库时出错: {e}")
         return None
 
-def main(stock_code=None):
+
+def generate_stock_flow_report(stock_code=None, date=None):
     try:
-        # 初始化 DeepSeekChat
-        chat = DeepSeekChat()
-        
         # 设置要分析的股票代码
         if stock_code is None:
             stock_code = "sz002564"  # 默认股票代码
-        
+
         print(f"正在获取股票 {stock_code} 的分笔数据...")
-        
+
         # 使用 akshare 获取分笔数据
         try:
-            # 从t_stock表中获取最近的4个交易日
-            # 去掉前缀以匹配数据库中的股票代码格式
+           
             clean_stock_code = stock_code.replace('sh', '').replace('sz', '')
-            
-            # 使用SQLAlchemy和text查询，参考inputHistoryEtfDataFromAkShare.py
-            from sqlalchemy import text
-            
-            # 查询最近的4个交易日
-            query = text("""
-                SELECT trade_date 
-                FROM t_stock 
-                WHERE stock_code = :code 
-                ORDER BY trade_date DESC 
-                LIMIT 4
-            """)
-            
-            with engine.connect() as conn:
-                result = conn.execute(query, {"code": clean_stock_code})
-                trade_dates = result.fetchall()
-            
-            # 确保我们有足够的交易日期数据
-            if len(trade_dates) < 4:
-                print(f"警告: 只找到 {len(trade_dates)} 个交易日，少于需要的4个")
-                # 如果没有足够的日期数据，使用默认日期
-                default_dates = ['20250417', '20250418', '20250421', '20250422']
+
+            # 根据传入的日期获取往前3个交易日的数据（跳过周末）
+            if date is None:
+                # 如果没有指定日期，使用默认日期
+                default_dates = ['20250512', '20250513', '20250514', '20250515']
                 date0, date1, date2, date3 = default_dates
             else:
-                # 转换为列表并按日期升序排列
-                date_list = [date[0] for date in trade_dates]
-                date_list.sort()  # 确保日期是按升序排列的
+                # 将输入的日期转换为 datetime 对象
+                if isinstance(date, str):
+                    if len(date) == 8:  # 如果是 "YYYYMMDD" 格式
+                        current_date = datetime.strptime(date, "%Y%m%d")
+                    else:
+                        # 尝试其他常见格式
+                        try:
+                            current_date = datetime.strptime(date, "%Y-%m-%d")
+                        except ValueError:
+                            try:
+                                current_date = datetime.strptime(date, "%Y/%m/%d")
+                            except ValueError:
+                                raise ValueError(f"无法解析日期格式: {date}")
+                elif isinstance(date, datetime):
+                    current_date = date
+                else:
+                    raise ValueError("日期参数格式不正确，请使用YYYYMMDD格式的字符串或datetime对象")
                 
-                # 确保日期格式正确 (移除任何连字符)
-                date_list = [str(d).replace('-', '') for d in date_list]
+                # 收集4天的交易日期（当前日期加上往前3个交易日）
+                dates = []
+                dates.append(current_date.strftime("%Y%m%d"))  # 当前日期
                 
-                date0, date1, date2, date3 = date_list
+                # 获取往前3个交易日
+                temp_date = current_date
+                while len(dates) < 4:
+                    temp_date = temp_date - timedelta(days=1)
+                    # 跳过周末（周六=5，周日=6）
+                    if temp_date.weekday() < 5:  # 0-4 代表周一至周五
+                        dates.append(temp_date.strftime("%Y%m%d"))
+                
+                # 确保顺序是从过去到现在
+                dates.reverse()
+                date0, date1, date2, date3 = dates
             
             print(f"获取日期 {date0}, {date1}, {date2}, {date3} 的分笔数据")
-            
+
             # 分别获取每一天的数据
             df0 = ak.stock_intraday_sina(symbol=stock_code, date=date0)
             df1 = ak.stock_intraday_sina(symbol=stock_code, date=date1)
             df2 = ak.stock_intraday_sina(symbol=stock_code, date=date2)
             df3 = ak.stock_intraday_sina(symbol=stock_code, date=date3)
-            
+
             # 确保我们至少有一天的数据
-            if (df0 is None or df0.empty) and (df1 is None or df1.empty) and (df2 is None or df2.empty) and (df3 is None or df3.empty):
+            if (df0 is None or df0.empty) and (df1 is None or df1.empty) and (df2 is None or df2.empty) and (
+                    df3 is None or df3.empty):
                 raise Exception("未能获取到任何分笔数据")
-            
+
             # 确保空值被替换为空DataFrame
             df0 = df0 if df0 is not None and not df0.empty else pd.DataFrame()
             df1 = df1 if df1 is not None and not df1.empty else pd.DataFrame()
             df2 = df2 if df2 is not None and not df2.empty else pd.DataFrame()
             df3 = df3 if df3 is not None and not df3.empty else pd.DataFrame()
-            
+
             # 添加日期信息到每个DataFrame
             if not df0.empty:
                 df0['date'] = date0
@@ -215,49 +222,89 @@ def main(stock_code=None):
                 df2['date'] = date2
             if not df3.empty:
                 df3['date'] = date3
-            
-            # 分析股票数据，明确传递DataFrame
-            print("开始分析股票数据...")
-            result = analyze_stock_data(chat, df0, df1, df2, df3)
-            
+
             # 准备数据摘要
             data_summary = {
                 "stock_code": stock_code,
                 "data_dates": [date0, date1, date2, date3],
                 "data_counts": [len(df0) if not df0.empty else 0,
-                               len(df1) if not df1.empty else 0, 
-                               len(df2) if not df2.empty else 0, 
-                               len(df3) if not df3.empty else 0],
+                                len(df1) if not df1.empty else 0,
+                                len(df2) if not df2.empty else 0,
+                                len(df3) if not df3.empty else 0],
                 "columns": df1.columns.tolist() if not df1.empty else df2.columns.tolist() if not df2.empty else df3.columns.tolist() if not df3.empty else [],
                 "analysis_timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
-            
+
+            # 初始化 DeepSeekChat 并尝试分析
+            try:
+                # 分析股票数据
+                print("初始化 DeepSeekChat 客户端...")
+                chat = DeepSeekChat()
+                print("开始分析股票数据...")
+                result = analyze_stock_data(chat, df0, df1, df2, df3)
+            except Exception as e:
+                print(f"LLM分析失败: {str(e)}，创建基础报告...")
+                # 创建一个简单的基础报告
+                result = f"""# 股票 {stock_code} 数据收集报告
+
+## 数据汇总
+- 股票代码: {stock_code}
+- 收集日期: {', '.join(data_summary['data_dates'])}
+- 数据数量: {sum(data_summary['data_counts'])} 条记录
+- 时间戳: {data_summary['analysis_timestamp']}
+
+## 注意
+由于LLM服务连接失败，无法提供详细的资金流向分析。错误信息: {str(e)}
+这是一个基础数据收集报告，仅提供数据收集情况。
+
+## 数据概览
+"""
+                for i, date in enumerate(data_summary['data_dates']):
+                    df = [df0, df1, df2, df3][i]
+                    result += f"\n### {date} 数据\n"
+                    result += f"- 记录数: {data_summary['data_counts'][i]} 条\n"
+                    if not df.empty:
+                        result += f"- 时间范围: {df['时间'].min()} 至 {df['时间'].max()}\n"
+                        if '成交价' in df.columns:
+                            result += f"- 价格范围: {df['成交价'].min()} 至 {df['成交价'].max()}\n"
+
             # 保存分析结果到MySQL数据库
             report_id = save_stock_analysis_to_db(result, stock_code, data_summary)
             if report_id:
                 print(f"分析报告已保存到MySQL数据库，ID: {report_id}")
-            
+
             # 同时也保存到本地文件
             md_file = save_to_markdown(result, stock_code)
             if md_file:
                 print(f"分析报告已同时保存到本地文件: {md_file}")
-            
+
             # 打印分析结果
-            print("\n" + "="*50)
+            print("\n" + "=" * 50)
             print(f"股票 {stock_code} 分析报告")
-            print("="*50 + "\n")
+            print("=" * 50 + "\n")
             print(result)
-            print("\n" + "="*50)
-            
+            print("\n" + "=" * 50)
+
             return result
-            
+
         except Exception as e:
             print(f"获取股票数据失败: {e}")
             raise
-    
+
     except Exception as e:
         print(f"程序运行出错: {str(e)}")
         return None
 
+
+def main(stock_code=None, date=None):
+    """主函数，调用生成股票资金流向报告
+    
+    Args:
+        stock_code: 股票代码，如 sz002564
+        date: 日期，格式为 YYYYMMDD 或 YYYY-MM-DD
+    """
+    return generate_stock_flow_report(stock_code, date)
+
+
 if __name__ == "__main__":
-    main("sz002564")  # Changed from "00300" to standard format for Shenzhen stocks 
+    main("sz002564", "20250430")  # Changed from "00300" to standard format for Shenzhen stocks

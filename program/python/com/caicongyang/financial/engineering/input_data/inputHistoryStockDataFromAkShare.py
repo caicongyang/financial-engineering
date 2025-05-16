@@ -30,6 +30,10 @@ mysql_port = os.getenv('DB_PORT')
 mysql_db = os.getenv('DB_NAME')
 table_name = 't_stock'
 
+# 处理端口值，确保它是一个有效的整数或使用默认值
+if mysql_port is None or mysql_port.lower() == 'none':
+    mysql_port = '3306'  # 使用MySQL默认端口
+
 engine = create_engine(f'mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_db}')
 
 # 数据库表字段和 DataFrame 列名的映射
@@ -186,5 +190,5 @@ def process_stock_data(date):
 
 if __name__ == "__main__":
     # 示例：处理指定日期的数据
-    date_to_process = '2025-02-11'
+    date_to_process = '2025-05-13'
     process_stock_data(date_to_process)

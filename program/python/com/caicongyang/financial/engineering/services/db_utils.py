@@ -217,6 +217,54 @@ def search_reports_by_title(keyword, limit=20):
     columns = result.keys()
     return [dict(zip(columns, row)) for row in rows]
 
+def get_paginated_reports_by_type(report_type, page=1, page_size=10):
+    """获取指定类型的报告分页列表
+    
+    Args:
+        report_type: 报告类型 ('market' 或 'stock')
+        page: 页码，从1开始
+        page_size: 每页记录数
+        
+    Returns:
+        total: 总记录数
+        reports: 当前页的报告列表
+    """
+    # 计算总记录数
+    count_query = text(f"""
+    SELECT COUNT(*) FROM {REPORTS_TABLE}
+    WHERE report_type = :report_type
+    """)
+    
+    # 获取分页数据
+    data_query = text(f"""
+    SELECT * FROM {REPORTS_TABLE}
+    WHERE report_type = :report_type
+    ORDER BY created_at DESC
+    LIMIT :offset, :limit
+    """)
+    
+    with engine.connect() as conn:
+        # 获取总记录数
+        total_result = conn.execute(count_query, {'report_type': report_type})
+        total = total_result.scalar()
+        
+        # 计算偏移量
+        offset = (page - 1) * page_size
+        
+        # 获取数据
+        result = conn.execute(data_query, {
+            'report_type': report_type,
+            'offset': offset,
+            'limit': page_size
+        })
+        rows = result.fetchall()
+    
+    # 转换为字典列表
+    columns = result.keys()
+    reports = [dict(zip(columns, row)) for row in rows]
+    
+    return total, reports
+
 if __name__ == "__main__":
     # 初始化数据库
     init_db()

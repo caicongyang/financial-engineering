@@ -34,12 +34,19 @@ logger = logging.getLogger(__name__)
 print_lock = threading.Lock()
 
 # 数据库连接信息
-mysql_user = os.getenv('DB_USER')
-mysql_password = os.getenv('DB_PASSWORD')
-mysql_host = os.getenv('DB_HOST')
-mysql_port = os.getenv('DB_PORT')
-mysql_db = os.getenv('DB_NAME')
+mysql_user = os.getenv('DB_USER', 'root')
+mysql_password = os.getenv('DB_PASSWORD', 'root')
+mysql_host = os.getenv('DB_HOST', 'localhost')
+mysql_port = os.getenv('DB_PORT', '3306')  # 设置默认端口为3306
+mysql_db = os.getenv('DB_NAME', 'stock')
 table_name = 't_etf'
+
+# 确保端口是整数
+try:
+    mysql_port = int(mysql_port)
+except (ValueError, TypeError):
+    logger.warning(f"Invalid port value: {mysql_port}, using default 3306")
+    mysql_port = 3306
 
 engine = create_engine(f'mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_db}')
 

@@ -22,9 +22,9 @@ sys.path.append(python_root)
 from com.caicongyang.financial.engineering.services.stock_chat_service import StockChatService
 from com.caicongyang.financial.engineering.services.data_processing_service import DataProcessingService
 from com.caicongyang.financial.engineering.services.scheduler_service import SchedulerService
-from com.caicongyang.financial.engineering.services.chat_api_service import ChatAPIService
-from com.caicongyang.financial.engineering.services.data_api_service import DataAPIService
-from com.caicongyang.financial.engineering.services.analysis_api_service import AnalysisAPIService
+from com.caicongyang.financial.engineering.api.chat_api_service import ChatAPIService
+from com.caicongyang.financial.engineering.api.data_api_service import DataAPIService
+from com.caicongyang.financial.engineering.api.analysis_api_service import AnalysisAPIService
 from com.caicongyang.financial.engineering.services.app_factory import AppFactory
 
 # 加载环境变量
