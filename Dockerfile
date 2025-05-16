@@ -34,11 +34,11 @@ COPY setup.py /app/
 # 安装项目包
 RUN pip install -e .
 
-# 设置工作目录
-WORKDIR /app/program/python/com/caicongyang/financial/engineering/input_data
+# 设置工作目录 - 更新为main.py所在的目录
+WORKDIR /app/program/python/com/caicongyang/financial/engineering
 
 # 设置环境变量
 ENV PYTHONPATH=/app
 
-# 启动脚本
-CMD ["python", "daily_data_process.py"] 
+# 启动脚本 - 更新为使用main.py
+CMD ["python", "main.py"] 

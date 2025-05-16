@@ -5,7 +5,7 @@
 分析报告API服务类，用于获取个股分析和市场分析报告
 """
 
-from typing import List, Optional
+from typing import List, Dict, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from datetime import datetime
@@ -24,8 +24,9 @@ class ReportModel(BaseModel):
     tags: Optional[str] = None
 
 class AnalysisReportResponse(BaseModel):
-    stock_reports: List[ReportModel]
-    market_reports: List[ReportModel]
+    stock_reports: List[dict]
+    market_reports: List[dict]
+    finance_reports: List[dict]
 
 class StockReportPageResponse(BaseModel):
     total: int
@@ -179,4 +180,57 @@ class AnalysisAPIService:
                     "stock_code": stock_code
                 }
             except Exception as e:
-                raise HTTPException(status_code=500, detail=f"启动报告生成失败: {str(e)}") 
+                raise HTTPException(status_code=500, detail=f"启动报告生成失败: {str(e)}")
+        
+        @self.router.get("/finance-reports", response_model=List[dict])
+        async def get_finance_reports():
+            """获取财务报告"""
+            try:
+                # 从数据库中获取最近的财务报告（包含完整内容）
+                finance_reports = get_latest_reports_with_content('finance', limit=5)
+                
+                # 格式化日期（从datetime到字符串）
+                for report in finance_reports:
+                    if isinstance(report.get('created_at'), datetime):
+                        report['created_at'] = report['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+                
+                return finance_reports
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"获取财务报告失败: {str(e)}")
+                
+        @self.router.post("/generate-finance-report", response_model=GenerateReportResponse)
+        async def generate_finance_report(company_name: str = Query(..., description="公司名称"), 
+                                          company_ticker: str = Query(None, description="股票代码")):
+            """
+            生成财务报告分析（异步）
+            
+            该接口会异步生成公司财务报告分析，报告生成后可在报告列表中查看
+            """
+            try:
+                # 验证参数
+                if not company_name:
+                    raise HTTPException(status_code=400, detail="公司名称不能为空")
+                
+                # 启动异步线程生成报告
+                def async_generate_report():
+                    try:
+                        from com.caicongyang.financial.engineering.services.finance_report import generate_finance_report_html
+                        generate_finance_report_html(company_name=company_name, company_ticker=company_ticker)
+                    except Exception as e:
+                        print(f"生成财务报告分析失败: {str(e)}")
+                
+                # 创建并启动线程
+                report_thread = threading.Thread(target=async_generate_report)
+                report_thread.daemon = True
+                report_thread.start()
+                
+                # 返回成功信息
+                return {
+                    "message": "财务报告分析生成已开始，请稍后在报告列表中查看结果",
+                    "estimated_time": "5-10分钟",
+                    "stock_code": company_ticker if company_ticker else company_name
+                }
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"启动财务报告分析失败: {str(e)}")
+        
+     

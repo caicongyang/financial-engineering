@@ -2,12 +2,12 @@
 #!/bin/bash
 
 # 构建镜像
-docker build -t financial-data-processor:latest .
+docker build -t financial-engineering:latest .
 
 # 打标签
-docker tag financial-data-processor:latest caicongyang/financial-data-processor:latest
+docker tag financial-engineering:latest caicongyang/financial-engineering:latest
 
 # 推送镜像
-docker push caicongyang/financial-data-processor:latest
+docker push caicongyang/financial-engineering:latest
 
 
