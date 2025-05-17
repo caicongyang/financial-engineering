@@ -10,23 +10,39 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
+from com.caicongyang.financial.engineering.utils.env_loader import load_env
 
-# 加载环境变量
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))))), '.env'))
+# 加载环境变量 - 使用通用加载模块
+load_env()
 
 # 数据库连接信息
-mysql_user = os.getenv('DB_USER')
-mysql_password = os.getenv('DB_PASSWORD')
-mysql_host = os.getenv('DB_HOST')
-mysql_port = os.getenv('DB_PORT')
-mysql_db = os.getenv('DB_NAME')
+mysql_user = os.getenv('DB_USER', 'root')
+mysql_password = os.getenv('DB_PASSWORD', 'root')
+mysql_host = os.getenv('DB_HOST', 'localhost')
+mysql_port = os.getenv('DB_PORT', '3306')
+mysql_db = os.getenv('DB_NAME', 'stock')
 source_table = 't_stock'
 target_table = 't_stock_10day_avg'
 
-print(mysql_port)
+# 检查并确保mysql_port是整数
+try:
+    mysql_port = int(mysql_port)
+except (ValueError, TypeError):
+    print(f"警告: 无效的数据库端口值 '{mysql_port}'，使用默认端口 3306")
+    mysql_port = 3306
+
+print(f"数据库连接信息: {mysql_host}:{mysql_port}/{mysql_db}, 用户: {mysql_user}")
 
 # 创建数据库连接
-engine = create_engine(f'mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_db}')
+try:
+    engine = create_engine(f'mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_db}')
+    # 测试连接
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    print("数据库连接成功")
+except Exception as e:
+    print(f"数据库连接错误: {e}")
+    raise
 
 def check_data_exists(date):
     """检查指定日期的股票数据是否存在"""

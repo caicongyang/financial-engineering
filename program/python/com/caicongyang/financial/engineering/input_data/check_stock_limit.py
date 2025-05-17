@@ -10,9 +10,10 @@ import pandas as pd
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+from com.caicongyang.financial.engineering.utils.env_loader import load_env
 
-# 加载环境变量
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))))), '.env'))
+# 加载环境变量 - 使用通用加载模块
+load_env()
 
 # 数据库连接信息
 mysql_user = os.getenv('DB_USER')

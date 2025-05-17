@@ -12,9 +12,10 @@ from datetime import datetime
 import numpy as np
 import os
 from dotenv import load_dotenv
+from com.caicongyang.financial.engineering.utils.env_loader import load_env
 
-# 加载环境变量
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))))), '.env'))
+# 加载环境变量 - 使用通用加载模块
+load_env()
 
 # 列多的时候，不隐藏
 pd.set_option('expand_frame_repr', False)

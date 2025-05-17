@@ -38,6 +38,10 @@ RUN mkdir -p /app/program/python/com/caicongyang/financial/engineering/{api,inpu
 # 复制整个项目结构
 COPY program /app/program/
 COPY setup.py /app/
+COPY entrypoint.sh /app/
+
+# 设置entrypoint脚本权限
+RUN chmod +x /app/entrypoint.sh
 
 # 安装项目包
 RUN pip install -e .
@@ -48,5 +52,5 @@ WORKDIR /app/program/python/com/caicongyang/financial/engineering
 # 设置环境变量
 ENV PYTHONPATH=/app
 
-# 启动脚本 - 更新为使用main.py
-CMD ["python", "main.py"] 
+# 使用entrypoint脚本启动
+ENTRYPOINT ["/app/entrypoint.sh"] 

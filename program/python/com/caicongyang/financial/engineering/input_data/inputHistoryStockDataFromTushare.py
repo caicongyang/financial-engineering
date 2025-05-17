@@ -12,9 +12,10 @@ import pandas as pd
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+from com.caicongyang.financial.engineering.utils.env_loader import load_env
 
-# 加载环境变量
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))))), '.env'))
+# 加载环境变量 - 使用通用加载模块
+load_env()
 
 # 初始化pro接口
 pro = ts.pro_api('6331c623af30880bbe71a753c236208f6b279b5c30250fddb5dfe154')

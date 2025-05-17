@@ -8,6 +8,7 @@
 import os
 import sys
 from dotenv import load_dotenv
+from com.caicongyang.financial.engineering.utils.env_loader import load_env
 from sqlalchemy import create_engine, text
 import traceback
 
@@ -18,7 +19,7 @@ python_root = os.path.join(project_root, "program", "python")
 sys.path.append(python_root)
 
 # 加载环境变量
-load_dotenv(os.path.join(project_root, '.env'))
+load_env()
 
 def print_db_info():
     """打印数据库连接信息"""
