@@ -76,13 +76,10 @@ ENV PYTHONPATH=/app
 # 3. 启动应用容器:
 #    docker run --name ai-backend \
 #      --network financial-network \
-#      -e DB_HOST=mysql \
-#      -e DB_PORT=3306 \
-#      -e DB_USER=root \
-#      -e DB_PASSWORD=root \
-#      -e DB_NAME=stock \
 #      -p 8000:8000 \
 #      -d <镜像名称>
+#
+# 注意: 所有配置将从镜像中的.env文件读取，无需通过-e参数传入环境变量
 # =====================================================================
 
 # 使用entrypoint脚本启动
