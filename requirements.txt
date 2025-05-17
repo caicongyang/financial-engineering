@@ -1,6 +1,6 @@
 # 数据获取和处理
-akshare==1.16.74
-numpy==1.26.2
+akshare==1.16.92
+numpy>=1.26.2,<2.0.0
 pandas==2.2.3
 tushare==1.4.13
 
@@ -9,9 +9,9 @@ pymysql==1.1.1
 sqlalchemy==2.0.35
 
 # Web框架和异步
-fastapi==0.68.0
-uvicorn==0.15.0
-pydantic==1.8.2
+fastapi>=0.115.12
+uvicorn>=0.34.2
+pydantic>=2.11.3
 
 # 工具包
 python-dotenv==1.0.0
@@ -30,7 +30,7 @@ aiodns==3.1.1
 async-timeout==4.0.3
 
 # AI相关
-openai>=1.24.0,<2.0.0
+openai==1.78.0
 
 # 其他工具
 markdown==3.8
