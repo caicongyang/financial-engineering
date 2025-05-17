@@ -27,12 +27,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 复制requirements.txt
 COPY requirements.txt .
 
-# 配置pip使用清华镜像源并安装依赖
+# 配置pip使用清华镜像源并安装所有依赖
 RUN pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple \
     && pip config set install.trusted-host mirrors.tuna.tsinghua.edu.cn \
     && pip install --upgrade pip \
     && pip install setuptools wheel \
-    && pip install -r requirements.txt --no-cache-dir
+    && pip install -r requirements.txt --no-cache-dir \
+    && pip install fastapi uvicorn python-dotenv pandas sqlalchemy pymysql --no-cache-dir
 
 # 创建完整的项目目录结构
 RUN mkdir -p /app/program/python/com/caicongyang/financial/engineering/{api,input_data,services,stock_select_strategy,timing_strategy,utils,input_data/cache}

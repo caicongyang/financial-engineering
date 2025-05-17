@@ -9,9 +9,9 @@ pymysql==1.1.1
 sqlalchemy==2.0.35
 
 # Web框架和异步
-fastapi>=0.115.12
-uvicorn>=0.34.2
-pydantic>=2.11.3
+fastapi==0.115.12
+uvicorn==0.34.2
+pydantic==2.11.3
 
 # 工具包
 python-dotenv==1.0.0
