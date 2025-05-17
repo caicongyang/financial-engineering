@@ -1,4 +1,4 @@
-# 使用Python 3.9作为基础镜像
+# 使用Python 3.11作为基础镜像
 FROM python:3.11-slim
 
 # 设置工作目录
@@ -20,6 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \
     wget \
     build-essential \
+    iputils-ping \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制requirements.txt
@@ -40,6 +42,10 @@ COPY program /app/program/
 COPY setup.py /app/
 COPY entrypoint.sh /app/
 
+# 复制.env文件到多个位置确保被找到
+COPY .env /app/
+COPY .env /app/program/python/com/caicongyang/financial/engineering/
+
 # 设置entrypoint脚本权限
 RUN chmod +x /app/entrypoint.sh
 
@@ -51,6 +57,32 @@ WORKDIR /app/program/python/com/caicongyang/financial/engineering
 
 # 设置环境变量
 ENV PYTHONPATH=/app
+
+# 部署说明
+# =====================================================================
+# 本镜像应当在与MySQL容器相同的Docker网络中运行，以便主机名解析工作正常
+# 
+# 推荐的部署方式:
+# 1. 创建Docker网络: docker network create financial-network
+# 
+# 2. 启动MySQL容器:
+#    docker run --name mysql \
+#      --network financial-network \
+#      -e MYSQL_ROOT_PASSWORD=root \
+#      -e MYSQL_DATABASE=stock \
+#      -d mysql:8.0
+# 
+# 3. 启动应用容器:
+#    docker run --name ai-backend \
+#      --network financial-network \
+#      -e DB_HOST=mysql \
+#      -e DB_PORT=3306 \
+#      -e DB_USER=root \
+#      -e DB_PASSWORD=root \
+#      -e DB_NAME=stock \
+#      -p 8000:8000 \
+#      -d <镜像名称>
+# =====================================================================
 
 # 使用entrypoint脚本启动
 ENTRYPOINT ["/app/entrypoint.sh"] 
