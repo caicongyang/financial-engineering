@@ -10,38 +10,78 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
-from com.caicongyang.financial.engineering.utils.env_loader import load_env
+import sys
+import traceback
 
-# 加载环境变量 - 使用通用加载模块
-load_env()
-
+# 首先尝试直接加载当前环境中的环境变量
 # 数据库连接信息
-mysql_user = os.getenv('DB_USER', 'root')
-mysql_password = os.getenv('DB_PASSWORD', 'root')
-mysql_host = os.getenv('DB_HOST', 'localhost')
-mysql_port = os.getenv('DB_PORT', '3306')
-mysql_db = os.getenv('DB_NAME', 'stock')
-source_table = 't_stock'
-target_table = 't_stock_10day_avg'
-
-# 检查并确保mysql_port是整数
 try:
-    mysql_port = int(mysql_port)
-except (ValueError, TypeError):
-    print(f"警告: 无效的数据库端口值 '{mysql_port}'，使用默认端口 3306")
-    mysql_port = 3306
+    # 优先使用环境变量
+    mysql_user = os.environ.get('DB_USER') or os.getenv('DB_USER', 'root')
+    mysql_password = os.environ.get('DB_PASSWORD') or os.getenv('DB_PASSWORD', 'root') 
+    mysql_host = os.environ.get('DB_HOST') or os.getenv('DB_HOST', 'localhost')
+    mysql_port = os.environ.get('DB_PORT') or os.getenv('DB_PORT', '3306')
+    mysql_db = os.environ.get('DB_NAME') or os.getenv('DB_NAME', 'stock')
 
-print(f"数据库连接信息: {mysql_host}:{mysql_port}/{mysql_db}, 用户: {mysql_user}")
+    # 尝试加载.env文件（如果环境变量未设置）
+    if mysql_host == 'localhost' and 'DB_HOST' not in os.environ:
+        print("尝试加载.env文件...")
+        
+        # 尝试从多个位置加载.env文件
+        env_paths = [
+            os.path.dirname(os.path.abspath(__file__)),  # 当前文件夹
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../../../")),  # 项目根目录
+            os.path.abspath('/app'),  # Docker根目录
+            os.path.abspath('/app/program/python/com/caicongyang/financial/engineering'),  # Docker应用目录
+        ]
+        
+        env_loaded = False
+        for path in env_paths:
+            env_file = os.path.join(path, '.env')
+            if os.path.exists(env_file):
+                print(f"从 {env_file} 加载环境变量")
+                load_dotenv(env_file)
+                # 重新加载环境变量
+                mysql_user = os.getenv('DB_USER', mysql_user)
+                mysql_password = os.getenv('DB_PASSWORD', mysql_password)
+                mysql_host = os.getenv('DB_HOST', mysql_host)
+                mysql_port = os.getenv('DB_PORT', mysql_port)
+                mysql_db = os.getenv('DB_NAME', mysql_db)
+                env_loaded = True
+                break
+                
+        if not env_loaded:
+            print("警告: 未找到.env文件，使用默认设置")
 
-# 创建数据库连接
-try:
-    engine = create_engine(f'mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_db}')
-    # 测试连接
-    with engine.connect() as conn:
-        conn.execute(text("SELECT 1"))
-    print("数据库连接成功")
+    source_table = 't_stock'
+    target_table = 't_stock_10day_avg'
+
+    # 检查并确保mysql_port是整数
+    try:
+        mysql_port = int(mysql_port)
+    except (ValueError, TypeError):
+        print(f"警告: 无效的数据库端口值 '{mysql_port}'，使用默认端口 3306")
+        mysql_port = 3306
+
+    print(f"数据库连接信息: {mysql_host}:{mysql_port}/{mysql_db}, 用户: {mysql_user}")
+
+    # 创建数据库连接
+    try:
+        connection_string = f'mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_db}'
+        print(f"连接字符串 (密码已隐藏): mysql+pymysql://{mysql_user}:****@{mysql_host}:{mysql_port}/{mysql_db}")
+        
+        engine = create_engine(connection_string)
+        # 测试连接
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print("数据库连接成功")
+    except Exception as e:
+        print(f"数据库连接错误: {e}")
+        traceback.print_exc()
+        raise
 except Exception as e:
-    print(f"数据库连接错误: {e}")
+    print(f"初始化数据库配置时出错: {e}")
+    traceback.print_exc()
     raise
 
 def check_data_exists(date):

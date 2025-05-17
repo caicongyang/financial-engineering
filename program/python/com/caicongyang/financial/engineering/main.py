@@ -26,14 +26,31 @@ def load_env_from_multiple_locations():
         os.path.dirname(os.path.abspath(__file__)),  # 当前目录
         project_root,  # 项目根目录
         os.path.abspath('/app'),  # Docker容器根目录
+        os.path.abspath('/app/program/python/com/caicongyang/financial/engineering'),  # Docker容器中的应用目录
     ]
     
-    for path in paths:
+    for i, path in enumerate(paths):
         env_path = os.path.join(path, '.env')
         if os.path.exists(env_path):
-            print(f"发现并加载 .env 文件: {env_path}")
-            load_dotenv(env_path)
-            return True
+            print(f"发现.env文件 #{i+1}: {env_path}")
+            try:
+                with open(env_path, 'r') as f:
+                    print(f"=== .env文件内容预览 ===")
+                    lines = f.readlines()
+                    for line in lines:
+                        if line.strip() and not line.strip().startswith('#'):
+                            if 'PASSWORD' in line:
+                                # 隐藏密码
+                                key, value = line.split('=', 1)
+                                print(f"{key}=****")
+                            else:
+                                print(line.strip())
+                
+                load_dotenv(env_path)
+                print(f"成功加载.env文件: {env_path}")
+                return True
+            except Exception as e:
+                print(f"加载.env文件失败 {env_path}: {e}")
     
     print("警告: 未找到任何 .env 文件!")
     return False
@@ -54,6 +71,20 @@ print(f"DB_PORT: {db_port}")
 print(f"DB_USER: {db_user}")
 print(f"DB_NAME: {db_name}")
 print(f"DEEPSEEK_API_KEY: {'[已设置]' if api_key != '[未设置]' else '[未设置]'}")
+
+# 如果数据库连接信息未设置，则尝试手动设置
+if db_host == '[未设置]' or db_user == '[未设置]':
+    print("警告: 数据库连接信息未正确设置，将使用默认值")
+    os.environ['DB_HOST'] = os.environ.get('DB_HOST', 'localhost')
+    os.environ['DB_PORT'] = os.environ.get('DB_PORT', '3306')
+    os.environ['DB_USER'] = os.environ.get('DB_USER', 'root')
+    os.environ['DB_PASSWORD'] = os.environ.get('DB_PASSWORD', 'root')
+    os.environ['DB_NAME'] = os.environ.get('DB_NAME', 'stock')
+    print("已设置默认数据库连接信息:")
+    print(f"DB_HOST: {os.environ['DB_HOST']}")
+    print(f"DB_PORT: {os.environ['DB_PORT']}")
+    print(f"DB_USER: {os.environ['DB_USER']}")
+    print(f"DB_NAME: {os.environ['DB_NAME']}")
 
 # 导入服务类
 try:
